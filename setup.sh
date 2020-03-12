@@ -4,9 +4,24 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-BASEDIR=$(dirname $0)
 
-source '.env'
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  TARGET="$(readlink "$SOURCE")"
+  if [[ $SOURCE == /* ]]; then
+    SOURCE="$TARGET"
+  else
+    DIR="$( dirname "$SOURCE" )"
+    SOURCE="$DIR/$TARGET"
+  fi
+done
+DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+BASEDIR=$DIR
+
+source $BASEDIR/.env
+
+echo $BASEDIR
 
 if [ "$OS" = "DEBIAN" ]; then
   echo -e "Installing on debian. Use ${BLUE}apt${NC} to Install"
@@ -57,20 +72,17 @@ if [ "$OS" = "DEBIAN" ]; then
 
   # oh my zsh
   echo -e "Installing ${RED}Zsh Configuration${NC}"
-  echo -e "${BLUE}ohmyzsh, spaceship-prompt, zsh-syntax-highlighting, zsh-autosuggestions${NC}"
+  echo -e "${BLUE}ohmyzsh, powerlevel10k, zsh-syntax-highlighting, zsh-autosuggestions${NC}"
   echo -n "continue? [y/N] "
   read answer
   if [ "$answer" != "${answer#[Yy]}" ]; then
-    sh -c "$(curl -fsSL https://raw.github.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+    sh -c "$(curl -fsSL https://raw.github.com/robbyrussell/oh-my-zsh/master/tools/install.sh)" "" --unattended
     git clone https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/themes/powerlevel10k
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zplugin/master/doc/install.sh)"
-    source "$HOME/.zplugin/bin/zplugin.zsh"
-
-    # git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/themes/powerlevel10k
+		# sh -c "$(curl -fsSL https://raw.githubusercontent.com/goznauk/zinit/master/doc/install.sh)"
     git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
     git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
     git clone https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:=~/.oh-my-zsh/custom}/plugins/zsh-completions
-    ln -sf "$BASEDIR/.zshrc" "$HOME/.zshrc"
+    cp -v "$BASEDIR/.zshrc" "$HOME/.zshrc"
   fi
 
   # git
