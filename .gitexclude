@@ -1,5 +1,36 @@
-**/.*.swp
-**/.*.swo
-**/.DS_Store
+# OS X
+._*
 .Spotlight-V100
 .Trashes
+.DS_Store
+.AppleDouble
+.LSOverride
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.directory
+
+# Windows
+$RECYCLE.BIN/
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# vim
+*.swp
+*.swo
+
+# npm
+npm-debug.log
+
+# yarn
+yarn-error.log
+
+# Python
+*.pyc
+.python-version
