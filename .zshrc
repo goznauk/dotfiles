@@ -1,4 +1,4 @@
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Enable Powerlevel11k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
@@ -60,25 +60,6 @@ alias 'listOpenPorts=lsof -i tcp | grep -i "listen"'
 alias 'nvsmi=nvidia-smi'
 
 autoload -U compinit && compinit
-
-zinit ice wait"0" blockf
-zinit light "zsh-users/zsh-completions"
-zinit ice wait"!0" atload"_zsh_autosuggest_start"
-zinit light "zsh-users/zsh-autosuggestions"
-zinit light "mafredri/zsh-async"
-#zinit light "sindresorhus/pure"
-#zinit light "intelfx/pure"
-zinit light "marzocchi/zsh-notify"
-zinit ice wait'!0'
-zinit light "vintersnow/anyframe"
-zinit ice wait'!0'
-zinit light "b4b4r07/enhancd"
-zinit ice wait'!0'
-zinit light "lukechilds/zsh-nvm"
-zinit ice wait'!0'
-zinit light "greymd/tmux-xpanes"
-zinit ice wait"0" atinit"zpcompinit; zpcdreplay"
-zinit light "zdharma/fast-syntax-highlighting"
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
