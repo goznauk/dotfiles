@@ -1,0 +1,16 @@
+[push]
+	default = simple
+[alias]
+	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
+	lga = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --all
+	conflicts = diff --name-only --diff-filter=U
+	dt = difftool
+	s = status
+[core]
+	editor = vim
+	pager = diff-so-fancy | less --tabs=4 -RFX
+	excludesfile = ~/.gitexclude
+[diff]
+	tool = vimdiff
+[include]
+	path = ~/.gitconfig.local
