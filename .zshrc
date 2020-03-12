@@ -61,24 +61,25 @@ alias 'nvsmi=nvidia-smi'
 
 autoload -U compinit && compinit
 
-zplugin ice wait"0" blockf
-zplugin light "zsh-users/zsh-completions"
-zplugin ice wait"!0" atload"_zsh_autosuggest_start"
-zplugin light "zsh-users/zsh-autosuggestions"
-zplugin light "mafredri/zsh-async"
-#zplugin light "sindresorhus/pure"
-#zplugin light "intelfx/pure"
-zplugin light "marzocchi/zsh-notify"
-zplugin ice wait'!0'
-zplugin light "vintersnow/anyframe"
-zplugin ice wait'!0'
-zplugin light "b4b4r07/enhancd"
-zplugin ice wait'!0'
-zplugin light "lukechilds/zsh-nvm"
-zplugin ice wait'!0'
-zplugin light "greymd/tmux-xpanes"
-zplugin ice wait"0" atinit"zpcompinit; zpcdreplay"
-zplugin light "zdharma/fast-syntax-highlighting"
+zinit ice wait"0" blockf
+zinit light "zsh-users/zsh-completions"
+zinit ice wait"!0" atload"_zsh_autosuggest_start"
+zinit light "zsh-users/zsh-autosuggestions"
+zinit light "mafredri/zsh-async"
+#zinit light "sindresorhus/pure"
+#zinit light "intelfx/pure"
+zinit light "marzocchi/zsh-notify"
+zinit ice wait'!0'
+zinit light "vintersnow/anyframe"
+zinit ice wait'!0'
+zinit light "b4b4r07/enhancd"
+zinit ice wait'!0'
+zinit light "lukechilds/zsh-nvm"
+zinit ice wait'!0'
+zinit light "greymd/tmux-xpanes"
+zinit ice wait"0" atinit"zpcompinit; zpcdreplay"
+zinit light "zdharma/fast-syntax-highlighting"
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
