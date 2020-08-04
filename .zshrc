@@ -34,6 +34,7 @@ alias 'rm=rm -i'
 alias 'rmdir=rm -rfi'
 alias 'mv=mv -i'
 alias 'cp=cp -i'
+alias 'cpr=rsync -avh --progress'
 
 # Typing errors...
 alias 'cd..=cd ..'
