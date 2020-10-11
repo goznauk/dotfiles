@@ -142,3 +142,59 @@ sudo /Applications/Install\ macOS\ Catalina.app/Contents/Resources/createinstall
 
 
 
+
+
+### CLI 설정
+
+- 필수적인 패키지만 설치 : DB 등 daemon으로 동작하는 프로그램은 웬만하면 Docker 사용
+
+- iTerm2 Font change
+
+  ```shell
+  brew cask install homebrew/cask-fonts/font-meslo-for-powerline
+  ```
+
+- Preference > Profiles > Text > Font : MesloLGS NF
+- `setup.sh` 실행
+
+
+
+### Mac App Store
+
+- Mac App Store에 로그인
+
+- mas 설치
+
+  ```shell
+  brew install mas
+  mas account
+  ```
+
+- 무료 앱
+
+  ```shell
+  mas install 869223134 # Kakao Talk
+  mas install 1236050766 # Melon
+  mas install 1295203466 # Microsoft Remote Desktop
+  mas insatll 409183694 # Keynote
+  mas install 409201541 # Pages
+  mas install 409203825 # Numbers 
+  mas install 416746898 # Hancom Office HWP 2014 VP Viewer
+  mas install 942568098 # Patina
+  mas install 1061525898 # Korea OnAir Radio
+  ```
+
+- 유료 앱 (따로 결제 필요)
+
+  ```shell
+  mas install 461788075 # Movist
+  mas install 1035237815 # Commnader One Pro
+  mas install 1206246482 # EdgeView 2
+  ```
+
+  
+
+
+
+
+
