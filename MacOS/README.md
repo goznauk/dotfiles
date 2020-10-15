@@ -10,10 +10,6 @@
 
 
 
-
-
-
-
 ## Format
 
 - 포맷용 USB 만들기
@@ -83,6 +79,12 @@ sudo /Applications/Install\ macOS\ Catalina.app/Contents/Resources/createinstall
   brew cask install google-chrome
   ```
 
+- Macs Fan Control 설치
+
+  ```shell
+  brew cask install macs-fan-control
+  ```
+
   
 
   
@@ -90,6 +92,7 @@ sudo /Applications/Install\ macOS\ Catalina.app/Contents/Resources/createinstall
 ### Preferences
 
 - 시스템 및 기본 앱 설정
+
   - System Preference > General > Default web browser : Google Chrome.app
   - System Preference > Dock > Show recent applications in Dock : Disable
   - System Preference > Mission Control > Automatically rearrange Spaces based on most recent use : Disable
@@ -144,6 +147,104 @@ sudo /Applications/Install\ macOS\ Catalina.app/Contents/Resources/createinstall
 
 
 
+### 앱 설치 (개발)
+
+- VS Code
+
+  ```shell
+  brew cask install visual-studio-code
+  ```
+
+- Postman
+
+  ```shell
+  brew cask install postman
+  ```
+
+- go2shell
+
+  ```shell
+  brew cask install go2shell
+  ```
+
+  
+
+
+
+
+
+### 앱 설치 (일반)
+
+- CheatSheet
+
+  ```shell
+  brew cask install cheatsheet
+  ```
+
+- Typora
+
+  ```shell
+  brew cask install typora
+  ```
+
+  - Preference > General > On Launch : Open custom folder
+  - Preference > Appearance > Theme : Onedark (별도 다운로드 필요)
+
+- Slack
+
+  ```shell
+  brew cask install slack
+  ```
+
+- VLC
+
+  ```shell
+  brew cask install vlc
+  ```
+
+  
+
+- Bartender (유료)
+
+  ```shell
+  brew cask install bartender
+  ```
+
+- iStat menus (유료)
+
+  ```shell
+  brew cask install istat-menus
+  ```
+
+  - File > Import Settings
+
+- MS Office (유료)
+
+  ```shell
+  brew cask install microsoft-office
+  ```
+
+- Parallels (유료)
+
+  ```shell
+  brew cask install parallels
+  ```
+
+  
+
+- Battle-net
+
+  ```shell
+  brew cask install battle-net
+  open /usr/local/Caskroom/battle-net/latest/Battle.net-Setup.app
+  ```
+
+  
+
+
+
+
+
 ### CLI 설정
 
 - 필수적인 패키지만 설치 : DB 등 daemon으로 동작하는 프로그램은 웬만하면 Docker 사용
@@ -155,6 +256,7 @@ sudo /Applications/Install\ macOS\ Catalina.app/Contents/Resources/createinstall
   ```
 
 - Preference > Profiles > Text > Font : MesloLGS NF
+
 - `setup.sh` 실행
 
 
@@ -193,6 +295,7 @@ sudo /Applications/Install\ macOS\ Catalina.app/Contents/Resources/createinstall
   ```
 
   
+
 
 
 
