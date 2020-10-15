@@ -257,6 +257,8 @@ sudo /Applications/Install\ macOS\ Catalina.app/Contents/Resources/createinstall
 
 - Preference > Profiles > Text > Font : MesloLGS NF
 
+- `.env` 수정
+
 - `setup.sh` 실행
 
 
