@@ -146,26 +146,36 @@ h3 {
   font-size: 0.9rem;
 }
 
-.target-select {
-  min-width: 0;
-  width: min(360px, 100%);
+.target-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.target-button {
+  min-width: 116px;
   display: grid;
-  gap: 7px;
+  gap: 2px;
+  text-align: left;
+  padding: 0.48rem 0.62rem;
 }
 
-.target-select span {
-  color: #354154;
+.target-button.active {
+  border-color: #1769e0;
+  background: #eaf2ff;
+  color: #0f4fb4;
+}
+
+.target-button strong {
+  display: block;
   font-size: 0.82rem;
-  font-weight: 800;
 }
 
-.target-select select {
-  width: 100%;
-  border: 1px solid #cfd5df;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #171a1f;
-  padding: 0.68rem 0.76rem;
+.target-button span {
+  display: block;
+  color: #5a6474;
+  font-size: 0.72rem;
 }
 
 .main-grid {
@@ -559,6 +569,19 @@ pre {
   overflow-wrap: anywhere;
 }
 
+.block-snippet {
+  max-height: 132px;
+  margin-top: 10px;
+  border: 1px solid #d9dee7;
+  border-radius: 6px;
+  background: #111827;
+  color: #e8edf5;
+  padding: 10px;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  overflow: auto;
+}
+
 .keycap-list {
   display: flex;
   flex-wrap: wrap;
@@ -733,8 +756,14 @@ kbd {
     grid-template-columns: 1fr;
   }
 
-  .target-select {
+  .target-options {
+    justify-content: flex-start;
     margin-top: 14px;
+  }
+
+  .target-button {
+    width: calc(50% - 4px);
+    min-width: 0;
   }
 
   .sticky-panel {

@@ -702,8 +702,8 @@ function App() {
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <p className="section-label">Dotfiles chooser</p>
-          <h1>Build a machine setup plan.</h1>
+          <p className="section-label">goznauk/dotfiles</p>
+          <h1>Build a setup plan.</h1>
         </div>
         <nav className="view-tabs" aria-label="Chooser sections">
           {(["install", "configs", "summary"] as ViewId[]).map((viewId) => (
@@ -943,17 +943,22 @@ function TargetSelector({
           {!activeTarget.implemented ? " preview" : ""}
         </span>
       </div>
-      <label className="target-select">
-        <span>Change target</span>
-        <select value={activeOs} onChange={(event) => onChange(event.target.value as OsId)}>
-          {catalog.osTargets.map((target) => (
-            <option key={target.id} value={target.id}>
-              {target.label} - {target.packageManager}
+      <div className="target-options" role="group" aria-label="Target OS choices">
+        {catalog.osTargets.map((target) => (
+          <button
+            className={activeOs === target.id ? "target-button active" : "target-button"}
+            key={target.id}
+            type="button"
+            onClick={() => onChange(target.id)}
+          >
+            <strong>{target.label}</strong>
+            <span>
+              {target.packageManager}
               {!target.implemented ? " preview" : ""}
-            </option>
-          ))}
-        </select>
-      </label>
+            </span>
+          </button>
+        ))}
+      </div>
     </section>
   );
 }
@@ -1215,6 +1220,9 @@ function ConfigBlockEditor({
               <strong>{block.title}</strong>
               <span>{block.description}</span>
               {block.shortcuts.length > 0 && <KeycapList keys={block.shortcuts} />}
+              <pre className="block-snippet">
+                <code>{block.content.trimEnd()}</code>
+              </pre>
             </div>
           </div>
         ))}
