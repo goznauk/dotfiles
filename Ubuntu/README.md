@@ -26,6 +26,8 @@ Useful variants:
 ./setup.sh ubuntu --yes --skip-apt
 ./setup.sh ubuntu --yes --skip-tools
 ./setup.sh ubuntu --yes --with-tpm
+./setup.sh ubuntu --yes --optional-packages bat,eza,btop
+./setup.sh ubuntu --yes --no-optional-packages
 ```
 
 ## What it installs

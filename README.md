@@ -18,6 +18,20 @@ For a one-shot install:
 
 See [Ubuntu setup](./Ubuntu/README.md) for package details and system notes.
 
+## Chooser
+
+The React chooser builds a static GitHub Pages app for selecting Ubuntu setup
+options and copying an install command.
+
+```sh
+cd chooser
+npm install
+npm run dev
+```
+
+See [Pages integration](./docs/pages-integration.md) for the `goznauk.com`
+submodule deployment path.
+
 ## macOS
 
 The macOS setup path is still legacy and uses `.env`.

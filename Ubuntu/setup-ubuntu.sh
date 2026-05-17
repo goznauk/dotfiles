@@ -11,6 +11,8 @@ SKIP_DOTFILES=0
 SKIP_SHELL=0
 SKIP_TOOLS=0
 WITH_TPM=0
+OPTIONAL_PACKAGE_MODE="all"
+OPTIONAL_PACKAGE_CSV=""
 
 usage() {
   cat <<'USAGE'
@@ -24,6 +26,10 @@ Options:
   --skip-shell     Skip zsh and oh-my-zsh setup
   --skip-tools     Skip uv, rustup, and mise runtime setup
   --with-tpm       Install tmux plugin manager
+  --optional-packages LIST
+                  Install only these optional apt packages, comma separated
+  --no-optional-packages
+                  Skip optional apt packages
   -h, --help       Show this help
 
 Examples:
@@ -33,32 +39,51 @@ Examples:
 USAGE
 }
 
-for arg in "$@"; do
-  case "$arg" in
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
     -y|--yes)
       YES=1
+      shift
       ;;
     --skip-apt)
       SKIP_APT=1
+      shift
       ;;
     --skip-dotfiles)
       SKIP_DOTFILES=1
+      shift
       ;;
     --skip-shell)
       SKIP_SHELL=1
+      shift
       ;;
     --skip-tools)
       SKIP_TOOLS=1
+      shift
       ;;
     --with-tpm)
       WITH_TPM=1
+      shift
+      ;;
+    --optional-packages)
+      OPTIONAL_PACKAGE_MODE="selected"
+      OPTIONAL_PACKAGE_CSV="${2:-}"
+      if [[ -z "$OPTIONAL_PACKAGE_CSV" ]]; then
+        printf 'Missing value for --optional-packages\n' >&2
+        exit 1
+      fi
+      shift 2
+      ;;
+    --no-optional-packages)
+      OPTIONAL_PACKAGE_MODE="none"
+      shift
       ;;
     -h|--help)
       usage
       exit 0
       ;;
     *)
-      printf 'Unknown option: %s\n' "$arg" >&2
+      printf 'Unknown option: %s\n' "$1" >&2
       usage
       exit 1
       ;;
@@ -139,6 +164,58 @@ load_package_file() {
   done <"$file"
 }
 
+split_csv() {
+  local input="$1"
+  local -n values_ref="$2"
+  local item
+
+  values_ref=()
+  IFS=',' read -ra values_ref <<<"$input"
+  for item in "${!values_ref[@]}"; do
+    values_ref[$item]="${values_ref[$item]#"${values_ref[$item]%%[![:space:]]*}"}"
+    values_ref[$item]="${values_ref[$item]%"${values_ref[$item]##*[![:space:]]}"}"
+  done
+}
+
+filter_optional_packages() {
+  local -n packages_ref="$1"
+  local selected=()
+  local filtered=()
+  local allowed
+  local package
+  local found
+
+  case "$OPTIONAL_PACKAGE_MODE" in
+    all)
+      return 0
+      ;;
+    none)
+      packages_ref=()
+      return 0
+      ;;
+    selected)
+      split_csv "$OPTIONAL_PACKAGE_CSV" selected
+      ;;
+  esac
+
+  for package in "${selected[@]}"; do
+    [[ -z "$package" ]] && continue
+    found=0
+    for allowed in "${packages_ref[@]}"; do
+      if [[ "$package" == "$allowed" ]]; then
+        filtered+=("$package")
+        found=1
+        break
+      fi
+    done
+    if [[ "$found" -eq 0 ]]; then
+      warn "Ignoring unknown optional package: $package"
+    fi
+  done
+
+  packages_ref=("${filtered[@]}")
+}
+
 detect_ubuntu() {
   if [[ ! -r /etc/os-release ]]; then
     warn 'Cannot read /etc/os-release; continuing without release checks.'
@@ -166,18 +243,23 @@ install_apt_packages() {
 
   load_package_file "$PACKAGE_DIR/core.txt" core_packages
   load_package_file "$PACKAGE_DIR/optional.txt" optional_packages || warn 'No optional apt package file loaded.'
+  filter_optional_packages optional_packages
 
   log 'Updating apt packages'
   sudo apt update
   sudo apt upgrade -y
   sudo apt install -y "${core_packages[@]}"
 
-  log 'Installing optional apt packages'
-  for pkg in "${optional_packages[@]}"; do
-    if ! sudo apt install -y "$pkg"; then
-      warn "Skipped optional package: $pkg"
-    fi
-  done
+  if [[ "${#optional_packages[@]}" -gt 0 ]]; then
+    log 'Installing optional apt packages'
+    for pkg in "${optional_packages[@]}"; do
+      if ! sudo apt install -y "$pkg"; then
+        warn "Skipped optional package: $pkg"
+      fi
+    done
+  else
+    log 'Skipping optional apt packages'
+  fi
 
   if command -v docker >/dev/null 2>&1; then
     sudo usermod -aG docker "$USER" || warn 'Could not add current user to docker group.'
