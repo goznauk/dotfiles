@@ -1,4 +1,4 @@
-# OS X
+# macOS
 ._*
 .Spotlight-V100
 .Trashes
@@ -21,16 +21,32 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# vim
+# Editors
 *.swp
 *.swo
+*.bak
 
-# npm
+# Local environment
+.env.local
+.env.*.local
+.venv/
+.direnv/
+
+# Node
+node_modules/
 npm-debug.log
-
-# yarn
 yarn-error.log
+pnpm-debug.log
 
 # Python
 *.pyc
-.python-version
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Build output
+dist/
+build/
+target/
+coverage/
