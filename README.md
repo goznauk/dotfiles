@@ -21,7 +21,8 @@ See [Ubuntu setup](./Ubuntu/README.md) for package details and system notes.
 ## Chooser
 
 The React chooser builds a static GitHub Pages app for selecting Ubuntu setup
-options and copying an install command.
+options, OS package names, runtime strategies, config files, and copying an
+install command.
 
 ```sh
 cd chooser

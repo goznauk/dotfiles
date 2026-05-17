@@ -37,3 +37,6 @@ cp -R vendor/dotfiles/chooser/dist/. public/tools/dotfiles/
 
 Then add a link to `/tools/dotfiles/` in the `goznauk.com` site navigation and
 tools list.
+
+The chooser is self-contained after build. Its catalog and default config
+content are bundled into the static assets.

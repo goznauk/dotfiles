@@ -1,0 +1,503 @@
+{
+  "osTargets": [
+    {
+      "id": "ubuntu",
+      "label": "Ubuntu",
+      "packageManager": "apt",
+      "commandTarget": "ubuntu",
+      "implemented": true,
+      "note": "The bootstrap installer supports Ubuntu first. Ubuntu 25.04 is past end of life; prefer 24.04 LTS or 26.04 LTS when possible."
+    },
+    {
+      "id": "macos",
+      "label": "macOS",
+      "packageManager": "brew",
+      "commandTarget": "macos",
+      "implemented": false,
+      "note": "The page generates brew commands and config previews."
+    },
+    {
+      "id": "amazon",
+      "label": "Amazon Linux 2023",
+      "packageManager": "dnf",
+      "commandTarget": "amazon",
+      "implemented": false,
+      "note": "The page generates dnf commands and config previews."
+    },
+    {
+      "id": "rhel",
+      "label": "RHEL 9/10",
+      "packageManager": "dnf",
+      "commandTarget": "rhel",
+      "implemented": false,
+      "note": "The page generates dnf commands and config previews."
+    }
+  ],
+  "groups": [
+    {
+      "id": "base",
+      "title": "Base system",
+      "description": "Transport, certificates, archives, and everyday shell basics.",
+      "defaultEnabled": true
+    },
+    {
+      "id": "build",
+      "title": "Build toolchain",
+      "description": "Compilers, linkers, make, CMake, Ninja, and native headers.",
+      "defaultEnabled": true
+    },
+    {
+      "id": "shell",
+      "title": "Shell and terminal",
+      "description": "zsh, tmux, Vim, and terminal workflow tools.",
+      "defaultEnabled": true
+    },
+    {
+      "id": "git",
+      "title": "Git and transfer",
+      "description": "Git, Git LFS, SSH, rsync, curl, and wget.",
+      "defaultEnabled": true
+    },
+    {
+      "id": "python",
+      "title": "Python",
+      "description": "System Python, venv support, pipx, sqlite, and headers for builds.",
+      "defaultEnabled": true
+    },
+    {
+      "id": "network",
+      "title": "Network inspection",
+      "description": "IP, DNS, ports, tracing, and remote access inspection tools.",
+      "defaultEnabled": true
+    },
+    {
+      "id": "utilities",
+      "title": "Modern CLI utilities",
+      "description": "Search, JSON/YAML, process viewers, benchmarking, and formatting.",
+      "defaultEnabled": true
+    },
+    {
+      "id": "containers",
+      "title": "Containers",
+      "description": "Docker or Podman strategy, separated from distro package lists.",
+      "defaultEnabled": true
+    }
+  ],
+  "packages": [
+    {
+      "id": "base.ca-certificates",
+      "group": "base",
+      "label": "CA certificates",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["ca-certificates"],
+        "macos": [],
+        "amazon": ["ca-certificates"],
+        "rhel": ["ca-certificates"]
+      }
+    },
+    {
+      "id": "base.apt-transport",
+      "group": "base",
+      "label": "Apt HTTPS transport",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["apt-transport-https"],
+        "macos": [],
+        "amazon": [],
+        "rhel": []
+      }
+    },
+    {
+      "id": "base.gnupg",
+      "group": "base",
+      "label": "GnuPG",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["gnupg"],
+        "macos": ["gnupg"],
+        "amazon": ["gnupg2"],
+        "rhel": ["gnupg2"]
+      }
+    },
+    {
+      "id": "base.release-info",
+      "group": "base",
+      "label": "Release information helpers",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["lsb-release", "software-properties-common"],
+        "macos": [],
+        "amazon": [],
+        "rhel": []
+      }
+    },
+    {
+      "id": "base.archives",
+      "group": "base",
+      "label": "Archive tools",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["unzip", "zip", "xz-utils", "tar"],
+        "macos": ["xz"],
+        "amazon": ["unzip", "zip", "xz", "tar"],
+        "rhel": ["unzip", "zip", "xz", "tar"]
+      }
+    },
+    {
+      "id": "build.essential",
+      "group": "build",
+      "label": "Core compiler toolchain",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["build-essential", "gcc", "g++", "make"],
+        "macos": [],
+        "amazon": ["gcc", "gcc-c++", "make"],
+        "rhel": ["gcc", "gcc-c++", "make"]
+      },
+      "note": "macOS uses Xcode command line tools for the base compiler."
+    },
+    {
+      "id": "build.cmake",
+      "group": "build",
+      "label": "CMake",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["cmake"],
+        "macos": ["cmake"],
+        "amazon": ["cmake"],
+        "rhel": ["cmake"]
+      }
+    },
+    {
+      "id": "build.ninja",
+      "group": "build",
+      "label": "Ninja",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["ninja-build"],
+        "macos": ["ninja"],
+        "amazon": ["ninja-build"],
+        "rhel": ["ninja-build"]
+      }
+    },
+    {
+      "id": "build.autotools",
+      "group": "build",
+      "label": "Autotools",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["autoconf", "automake", "libtool", "pkg-config"],
+        "macos": ["autoconf", "automake", "libtool", "pkg-config"],
+        "amazon": ["autoconf", "automake", "libtool", "pkgconf-pkg-config"],
+        "rhel": ["autoconf", "automake", "libtool", "pkgconf-pkg-config"]
+      }
+    },
+    {
+      "id": "build.llvm",
+      "group": "build",
+      "label": "LLVM and debuggers",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["clang", "lldb", "gdb"],
+        "macos": ["llvm"],
+        "amazon": ["clang", "lldb", "gdb"],
+        "rhel": ["clang", "lldb", "gdb"]
+      }
+    },
+    {
+      "id": "build.headers",
+      "group": "build",
+      "label": "Common native headers",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": [
+          "libssl-dev",
+          "zlib1g-dev",
+          "libbz2-dev",
+          "libreadline-dev",
+          "libsqlite3-dev",
+          "libffi-dev",
+          "liblzma-dev",
+          "libncurses-dev",
+          "tk-dev",
+          "uuid-dev"
+        ],
+        "macos": ["openssl", "readline", "sqlite", "xz", "tcl-tk"],
+        "amazon": [
+          "openssl-devel",
+          "zlib-devel",
+          "bzip2-devel",
+          "readline-devel",
+          "sqlite-devel",
+          "libffi-devel",
+          "xz-devel",
+          "ncurses-devel",
+          "tk-devel",
+          "libuuid-devel"
+        ],
+        "rhel": [
+          "openssl-devel",
+          "zlib-devel",
+          "bzip2-devel",
+          "readline-devel",
+          "sqlite-devel",
+          "libffi-devel",
+          "xz-devel",
+          "ncurses-devel",
+          "tk-devel",
+          "libuuid-devel"
+        ]
+      }
+    },
+    {
+      "id": "shell.zsh",
+      "group": "shell",
+      "label": "zsh",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["zsh"],
+        "macos": ["zsh"],
+        "amazon": ["zsh"],
+        "rhel": ["zsh"]
+      }
+    },
+    {
+      "id": "shell.vim",
+      "group": "shell",
+      "label": "Vim",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["vim"],
+        "macos": ["vim"],
+        "amazon": ["vim-enhanced"],
+        "rhel": ["vim-enhanced"]
+      }
+    },
+    {
+      "id": "shell.tmux",
+      "group": "shell",
+      "label": "tmux",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["tmux"],
+        "macos": ["tmux"],
+        "amazon": ["tmux"],
+        "rhel": ["tmux"]
+      }
+    },
+    {
+      "id": "shell.direnv",
+      "group": "shell",
+      "label": "direnv",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["direnv"],
+        "macos": ["direnv"],
+        "amazon": ["direnv"],
+        "rhel": ["direnv"]
+      }
+    },
+    {
+      "id": "git.git",
+      "group": "git",
+      "label": "Git",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["git"],
+        "macos": ["git"],
+        "amazon": ["git"],
+        "rhel": ["git"]
+      }
+    },
+    {
+      "id": "git.git-lfs",
+      "group": "git",
+      "label": "Git LFS",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["git-lfs"],
+        "macos": ["git-lfs"],
+        "amazon": ["git-lfs"],
+        "rhel": ["git-lfs"]
+      }
+    },
+    {
+      "id": "git.transfer",
+      "group": "git",
+      "label": "Transfer tools",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["curl", "wget", "rsync", "openssh-client"],
+        "macos": ["curl", "wget", "rsync", "openssh"],
+        "amazon": ["curl", "wget", "rsync", "openssh-clients"],
+        "rhel": ["curl", "wget", "rsync", "openssh-clients"]
+      }
+    },
+    {
+      "id": "python.runtime",
+      "group": "python",
+      "label": "Python runtime",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["python3", "python3-dev", "python3-venv", "python3-pip", "pipx"],
+        "macos": ["python", "pipx"],
+        "amazon": ["python3", "python3-devel", "python3-pip", "pipx"],
+        "rhel": ["python3", "python3-devel", "python3-pip", "pipx"]
+      }
+    },
+    {
+      "id": "python.sqlite",
+      "group": "python",
+      "label": "SQLite",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["sqlite3"],
+        "macos": ["sqlite"],
+        "amazon": ["sqlite"],
+        "rhel": ["sqlite"]
+      }
+    },
+    {
+      "id": "network.iproute",
+      "group": "network",
+      "label": "IP route tools",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["iproute2", "net-tools", "iputils-ping"],
+        "macos": [],
+        "amazon": ["iproute", "net-tools", "iputils"],
+        "rhel": ["iproute", "net-tools", "iputils"]
+      }
+    },
+    {
+      "id": "network.dns",
+      "group": "network",
+      "label": "DNS tools",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["dnsutils"],
+        "macos": ["bind"],
+        "amazon": ["bind-utils"],
+        "rhel": ["bind-utils"]
+      }
+    },
+    {
+      "id": "network.tracing",
+      "group": "network",
+      "label": "Tracing and scanning",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["traceroute", "nmap", "lsof"],
+        "macos": ["traceroute", "nmap", "lsof"],
+        "amazon": ["traceroute", "nmap", "lsof"],
+        "rhel": ["traceroute", "nmap", "lsof"]
+      }
+    },
+    {
+      "id": "utilities.search",
+      "group": "utilities",
+      "label": "Search and fuzzy find",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["ripgrep", "fd-find", "fzf"],
+        "macos": ["ripgrep", "fd", "fzf"],
+        "amazon": ["ripgrep", "fd-find", "fzf"],
+        "rhel": ["ripgrep", "fd-find", "fzf"]
+      }
+    },
+    {
+      "id": "utilities.json",
+      "group": "utilities",
+      "label": "JSON and YAML",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["jq", "yq"],
+        "macos": ["jq", "yq"],
+        "amazon": ["jq", "yq"],
+        "rhel": ["jq", "yq"]
+      }
+    },
+    {
+      "id": "utilities.process",
+      "group": "utilities",
+      "label": "Process viewers",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["htop", "btop"],
+        "macos": ["htop", "btop"],
+        "amazon": ["htop", "btop"],
+        "rhel": ["htop", "btop"]
+      }
+    },
+    {
+      "id": "utilities.misc",
+      "group": "utilities",
+      "label": "Miscellaneous utilities",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["tree", "shellcheck", "shfmt", "hyperfine", "bat", "eza", "git-extras"],
+        "macos": ["tree", "shellcheck", "shfmt", "hyperfine", "bat", "eza", "git-extras"],
+        "amazon": ["tree", "ShellCheck", "shfmt", "hyperfine", "bat", "eza", "git-extras"],
+        "rhel": ["tree", "ShellCheck", "shfmt", "hyperfine", "bat", "eza", "git-extras"]
+      }
+    },
+    {
+      "id": "utilities.clipboard",
+      "group": "utilities",
+      "label": "Clipboard integration",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["xclip", "wl-clipboard"],
+        "macos": [],
+        "amazon": ["xclip", "wl-clipboard"],
+        "rhel": ["xclip", "wl-clipboard"]
+      }
+    }
+  ],
+  "strategies": {
+    "docker": [
+      {
+        "id": "official",
+        "label": "Docker official repository",
+        "description": "Use Docker Inc. packages and compose plugin on supported OS releases.",
+        "defaults": ["ubuntu"]
+      },
+      {
+        "id": "distro",
+        "label": "Distro package",
+        "description": "Use the OS package repository.",
+        "defaults": ["amazon"]
+      },
+      {
+        "id": "podman",
+        "label": "Podman compatibility",
+        "description": "Use Podman and Docker-compatible CLI behavior.",
+        "defaults": ["rhel"]
+      },
+      {
+        "id": "none",
+        "label": "None",
+        "description": "Skip container runtime installation.",
+        "defaults": ["macos"]
+      }
+    ],
+    "node": [
+      {
+        "id": "mise",
+        "label": "mise",
+        "description": "One manager for Node, Python, Rust, and other runtimes."
+      },
+      {
+        "id": "nvm",
+        "label": "nvm",
+        "description": "Node-only shell manager."
+      },
+      {
+        "id": "none",
+        "label": "None",
+        "description": "Skip Node setup."
+      }
+    ]
+  }
+}

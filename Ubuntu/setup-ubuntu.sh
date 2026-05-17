@@ -11,8 +11,13 @@ SKIP_DOTFILES=0
 SKIP_SHELL=0
 SKIP_TOOLS=0
 WITH_TPM=0
+APT_PACKAGE_MODE="default"
+APT_PACKAGE_CSV=""
 OPTIONAL_PACKAGE_MODE="all"
 OPTIONAL_PACKAGE_CSV=""
+EXTRA_PACKAGE_CSV=""
+DOCKER_STRATEGY="official"
+NODE_STRATEGY="mise"
 
 usage() {
   cat <<'USAGE'
@@ -26,10 +31,18 @@ Options:
   --skip-shell     Skip zsh and oh-my-zsh setup
   --skip-tools     Skip uv, rustup, and mise runtime setup
   --with-tpm       Install tmux plugin manager
+  --apt-packages LIST
+                  Install exactly these apt packages, comma separated
   --optional-packages LIST
                   Install only these optional apt packages, comma separated
   --no-optional-packages
                   Skip optional apt packages
+  --extra-packages LIST
+                  Add extra apt packages, comma separated
+  --docker-strategy VALUE
+                  official, distro, podman, or none
+  --node-strategy VALUE
+                  mise, nvm, or none
   -h, --help       Show this help
 
 Examples:
@@ -65,6 +78,15 @@ while [[ "$#" -gt 0 ]]; do
       WITH_TPM=1
       shift
       ;;
+    --apt-packages)
+      APT_PACKAGE_MODE="selected"
+      APT_PACKAGE_CSV="${2:-}"
+      if [[ -z "$APT_PACKAGE_CSV" ]]; then
+        printf 'Missing value for --apt-packages\n' >&2
+        exit 1
+      fi
+      shift 2
+      ;;
     --optional-packages)
       OPTIONAL_PACKAGE_MODE="selected"
       OPTIONAL_PACKAGE_CSV="${2:-}"
@@ -77,6 +99,36 @@ while [[ "$#" -gt 0 ]]; do
     --no-optional-packages)
       OPTIONAL_PACKAGE_MODE="none"
       shift
+      ;;
+    --extra-packages)
+      EXTRA_PACKAGE_CSV="${2:-}"
+      if [[ -z "$EXTRA_PACKAGE_CSV" ]]; then
+        printf 'Missing value for --extra-packages\n' >&2
+        exit 1
+      fi
+      shift 2
+      ;;
+    --docker-strategy)
+      DOCKER_STRATEGY="${2:-}"
+      case "$DOCKER_STRATEGY" in
+        official|distro|podman|none) ;;
+        *)
+          printf 'Invalid --docker-strategy: %s\n' "$DOCKER_STRATEGY" >&2
+          exit 1
+          ;;
+      esac
+      shift 2
+      ;;
+    --node-strategy)
+      NODE_STRATEGY="${2:-}"
+      case "$NODE_STRATEGY" in
+        mise|nvm|none) ;;
+        *)
+          printf 'Invalid --node-strategy: %s\n' "$NODE_STRATEGY" >&2
+          exit 1
+          ;;
+      esac
+      shift 2
       ;;
     -h|--help)
       usage
@@ -216,6 +268,37 @@ filter_optional_packages() {
   packages_ref=("${filtered[@]}")
 }
 
+append_csv_packages() {
+  local input="$1"
+  local -n packages_ref="$2"
+  local parsed=()
+  local package
+
+  [[ -z "$input" ]] && return 0
+  split_csv "$input" parsed
+  for package in "${parsed[@]}"; do
+    [[ -z "$package" ]] && continue
+    packages_ref+=("$package")
+  done
+}
+
+dedupe_packages() {
+  local -n packages_ref="$1"
+  local seen=" "
+  local deduped=()
+  local package
+
+  for package in "${packages_ref[@]}"; do
+    [[ -z "$package" ]] && continue
+    if [[ "$seen" != *" $package "* ]]; then
+      deduped+=("$package")
+      seen+="$package "
+    fi
+  done
+
+  packages_ref=("${deduped[@]}")
+}
+
 detect_ubuntu() {
   if [[ ! -r /etc/os-release ]]; then
     warn 'Cannot read /etc/os-release; continuing without release checks.'
@@ -240,26 +323,35 @@ detect_ubuntu() {
 install_apt_packages() {
   local core_packages=()
   local optional_packages=()
+  local packages=()
 
-  load_package_file "$PACKAGE_DIR/core.txt" core_packages
-  load_package_file "$PACKAGE_DIR/optional.txt" optional_packages || warn 'No optional apt package file loaded.'
-  filter_optional_packages optional_packages
+  case "$APT_PACKAGE_MODE" in
+    default)
+      load_package_file "$PACKAGE_DIR/core.txt" core_packages
+      load_package_file "$PACKAGE_DIR/optional.txt" optional_packages || warn 'No optional apt package file loaded.'
+      filter_optional_packages optional_packages
+      packages=("${core_packages[@]}" "${optional_packages[@]}")
+      ;;
+    selected)
+      append_csv_packages "$APT_PACKAGE_CSV" packages
+      ;;
+  esac
+
+  append_csv_packages "$EXTRA_PACKAGE_CSV" packages
+  dedupe_packages packages
 
   log 'Updating apt packages'
   sudo apt update
   sudo apt upgrade -y
-  sudo apt install -y "${core_packages[@]}"
 
-  if [[ "${#optional_packages[@]}" -gt 0 ]]; then
-    log 'Installing optional apt packages'
-    for pkg in "${optional_packages[@]}"; do
-      if ! sudo apt install -y "$pkg"; then
-        warn "Skipped optional package: $pkg"
-      fi
-    done
+  if [[ "${#packages[@]}" -gt 0 ]]; then
+    log 'Installing apt packages'
+    sudo apt install -y "${packages[@]}"
   else
-    log 'Skipping optional apt packages'
+    log 'Skipping apt package install'
   fi
+
+  install_container_runtime
 
   if command -v docker >/dev/null 2>&1; then
     sudo usermod -aG docker "$USER" || warn 'Could not add current user to docker group.'
@@ -272,6 +364,64 @@ install_apt_packages() {
   if command -v batcat >/dev/null 2>&1 && ! command -v bat >/dev/null 2>&1; then
     ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
   fi
+}
+
+install_container_runtime() {
+  case "$DOCKER_STRATEGY" in
+    official)
+      install_docker_official
+      ;;
+    distro)
+      install_docker_distro
+      ;;
+    podman)
+      install_podman
+      ;;
+    none)
+      log 'Skipping container runtime'
+      ;;
+  esac
+}
+
+install_docker_official() {
+  local suite
+
+  log 'Installing Docker from official repository'
+  sudo apt update
+  sudo apt install -y ca-certificates curl
+  sudo install -m 0755 -d /etc/apt/keyrings
+  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+  # shellcheck disable=SC1091
+  . /etc/os-release
+  suite="${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}"
+  if [[ -z "$suite" ]]; then
+    warn 'Cannot determine Ubuntu codename for Docker apt source.'
+    return 1
+  fi
+
+  sudo tee /etc/apt/sources.list.d/docker.sources >/dev/null <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $suite
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+
+  sudo apt update
+  sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+}
+
+install_docker_distro() {
+  log 'Installing Docker from Ubuntu packages'
+  sudo apt install -y docker.io docker-compose-v2
+}
+
+install_podman() {
+  log 'Installing Podman compatibility tools'
+  sudo apt install -y podman podman-docker
 }
 
 install_shell() {
@@ -376,10 +526,37 @@ install_mise_and_node() {
   fi
 }
 
+install_nvm_and_node() {
+  log 'Installing nvm and Node LTS'
+  if [[ ! -d "$HOME/.nvm" ]]; then
+    curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
+  fi
+
+  # shellcheck disable=SC1091
+  export NVM_DIR="$HOME/.nvm"
+  if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+    . "$NVM_DIR/nvm.sh"
+    nvm install --lts
+    nvm alias default 'lts/*'
+  else
+    warn 'nvm was not found after install; Node LTS setup skipped.'
+  fi
+}
+
 install_tools() {
   install_uv
   install_rust
-  install_mise_and_node
+  case "$NODE_STRATEGY" in
+    mise)
+      install_mise_and_node
+      ;;
+    nvm)
+      install_nvm_and_node
+      ;;
+    none)
+      log 'Skipping Node runtime setup'
+      ;;
+  esac
 }
 
 main() {

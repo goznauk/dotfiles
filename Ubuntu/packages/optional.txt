@@ -8,5 +8,3 @@ nmap
 openssh-server
 shfmt
 yq
-docker.io
-docker-compose-v2

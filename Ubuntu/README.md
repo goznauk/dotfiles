@@ -26,8 +26,11 @@ Useful variants:
 ./setup.sh ubuntu --yes --skip-apt
 ./setup.sh ubuntu --yes --skip-tools
 ./setup.sh ubuntu --yes --with-tpm
+./setup.sh ubuntu --yes --apt-packages git,zsh,vim,tmux
 ./setup.sh ubuntu --yes --optional-packages bat,eza,btop
 ./setup.sh ubuntu --yes --no-optional-packages
+./setup.sh ubuntu --yes --docker-strategy official
+./setup.sh ubuntu --yes --node-strategy nvm
 ```
 
 ## What it installs
@@ -36,12 +39,14 @@ Useful variants:
   `Ubuntu/packages/optional.txt`.
 - Python through Ubuntu packages, with `python3-venv`, `pipx`, and `uv`.
 - Rust through `rustup`, including `rustfmt` and `clippy`.
-- Node LTS through `mise`.
+- Node LTS through `mise` by default, or `nvm` with `--node-strategy nvm`.
+- Container runtime through `--docker-strategy`: Docker official repository,
+  Ubuntu packages, Podman compatibility, or none.
 - Shell tools: `zsh`, oh-my-zsh, Powerlevel10k, syntax highlighting,
   autosuggestions, completions, `direnv`, `ripgrep`, `fd`, `fzf`, `jq`, `tmux`,
   and `vim`.
-- Optional tools if available in apt: Docker, Compose v2, `bat`, `eza`,
-  `hyperfine`, `btop`, `yq`, `shfmt`, and `nmap`.
+- Optional tools if available in apt: `bat`, `eza`, `hyperfine`, `btop`, `yq`,
+  `shfmt`, and `nmap`.
 
 ## Package lists
 
@@ -53,6 +58,10 @@ Ubuntu apt packages live outside the installer:
 
 Use one package name per line. Blank lines and lines starting with `#` are
 ignored.
+
+The chooser app uses `packages/catalog.json` to map semantic package choices to
+Ubuntu, macOS, Amazon Linux 2023, and RHEL package names. The Ubuntu installer
+can accept the chooser output through `--apt-packages`.
 
 ## Dotfiles
 
@@ -136,6 +145,11 @@ docker version
 docker compose version
 groups
 ```
+
+The official Docker repository strategy follows Docker's supported Ubuntu
+release list. For Ubuntu 25.04, prefer upgrading the OS; if you continue on it,
+use `--docker-strategy distro`, `--docker-strategy podman`, or
+`--docker-strategy none`.
 
 After the installer adds your user to the Docker group, log out and back in.
 
