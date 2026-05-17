@@ -23,5 +23,7 @@ See [Ubuntu setup](./Ubuntu/README.md) for package details and system notes.
 The macOS setup path is still legacy and uses `.env`.
 
 ```sh
+cp .env.example .env
+vim .env
 ./setup.sh macos
 ```

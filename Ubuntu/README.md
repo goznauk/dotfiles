@@ -30,9 +30,8 @@ Useful variants:
 
 ## What it installs
 
-- Apt packages for compiling and debugging: `build-essential`, `cmake`,
-  `ninja-build`, `clang`, `lldb`, `gdb`, headers, archive tools, and network
-  inspection tools.
+- Apt packages listed in `Ubuntu/packages/core.txt` and
+  `Ubuntu/packages/optional.txt`.
 - Python through Ubuntu packages, with `python3-venv`, `pipx`, and `uv`.
 - Rust through `rustup`, including `rustfmt` and `clippy`.
 - Node LTS through `mise`.
@@ -41,6 +40,17 @@ Useful variants:
   and `vim`.
 - Optional tools if available in apt: Docker, Compose v2, `bat`, `eza`,
   `hyperfine`, `btop`, `yq`, `shfmt`, and `nmap`.
+
+## Package lists
+
+Ubuntu apt packages live outside the installer:
+
+- `Ubuntu/packages/core.txt` is required. Missing packages stop the apt install.
+- `Ubuntu/packages/optional.txt` is best effort. Missing packages are skipped
+  with a warning.
+
+Use one package name per line. Blank lines and lines starting with `#` are
+ignored.
 
 ## Dotfiles
 

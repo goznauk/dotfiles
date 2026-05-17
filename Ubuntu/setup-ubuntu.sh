@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_DIR="$ROOT_DIR/common"
+PACKAGE_DIR="$ROOT_DIR/Ubuntu/packages"
 
 YES=0
 SKIP_APT=0
@@ -119,6 +120,25 @@ link_file() {
   printf 'Linked %s\n' "$target"
 }
 
+load_package_file() {
+  local file="$1"
+  local -n packages_ref="$2"
+  local line
+
+  packages_ref=()
+
+  if [[ ! -r "$file" ]]; then
+    printf 'Package file not found: %s\n' "$file" >&2
+    return 1
+  fi
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    packages_ref+=("$line")
+  done <"$file"
+}
+
 detect_ubuntu() {
   if [[ ! -r /etc/os-release ]]; then
     warn 'Cannot read /etc/os-release; continuing without release checks.'
@@ -141,85 +161,11 @@ detect_ubuntu() {
 }
 
 install_apt_packages() {
-  local core_packages=(
-    apt-transport-https
-    ca-certificates
-    curl
-    wget
-    gnupg
-    lsb-release
-    software-properties-common
-    build-essential
-    pkg-config
-    make
-    cmake
-    ninja-build
-    autoconf
-    automake
-    libtool
-    gcc
-    g++
-    clang
-    lldb
-    gdb
-    git
-    git-lfs
-    zsh
-    vim
-    tmux
-    rsync
-    unzip
-    zip
-    xz-utils
-    tar
-    jq
-    ripgrep
-    fd-find
-    fzf
-    tree
-    htop
-    lsof
-    net-tools
-    iproute2
-    dnsutils
-    iputils-ping
-    traceroute
-    openssh-client
-    python3
-    python3-dev
-    python3-venv
-    python3-pip
-    pipx
-    sqlite3
-    libssl-dev
-    zlib1g-dev
-    libbz2-dev
-    libreadline-dev
-    libsqlite3-dev
-    libffi-dev
-    liblzma-dev
-    libncurses-dev
-    tk-dev
-    uuid-dev
-    direnv
-    shellcheck
-    xclip
-    wl-clipboard
-  )
+  local core_packages=()
+  local optional_packages=()
 
-  local optional_packages=(
-    btop
-    bat
-    eza
-    git-extras
-    hyperfine
-    nmap
-    openssh-server
-    shfmt
-    yq
-    docker.io
-    docker-compose-v2
-  )
+  load_package_file "$PACKAGE_DIR/core.txt" core_packages
+  load_package_file "$PACKAGE_DIR/optional.txt" optional_packages || warn 'No optional apt package file loaded.'
 
   log 'Updating apt packages'
   sudo apt update
