@@ -1,31 +1,32 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-source $ENVPATH
+# shellcheck disable=SC1090
+source "$ENVPATH"
 
-echo -e "░░ Install ${BLUE}brew${NC} if not exists"
+echo -e "Install ${BLUE}brew${NC} if it does not exist"
 
-if ! command -v brew &>/dev/null; then
-    echo "░░ NO BREW DETECTED"
+if ! command -v brew >/dev/null 2>&1; then
+    echo "No brew detected"
     xcode-select --install
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 fi
 
-# general osx packages
-echo -e "░░ Installing ${RED}POSIX packages${NC}"
-echo -e "░░ ${BLUE}$OSX_PACKAGES${NC}"
-echo -n "░░ continue? [y/N] "
+# General macOS packages.
+echo -e "Installing ${RED}packages${NC}"
+echo -e "${BLUE}$OSX_PACKAGES${NC}"
+echo -n "continue? [y/N] "
 read answer
 if [ "$answer" != "${answer#[Yy]}" ]; then
-    echo -e "░░ Installing packages"
+    echo -e "Installing packages"
     brew install $OSX_PACKAGES
 fi
 
-# Java10
-echo -e "░░ Installing ${RED}Java${NC}"
-echo -n "░░ continue? [y/N] "
+# Java.
+echo -e "Installing ${RED}Java${NC}"
+echo -n "continue? [y/N] "
 read answer
 if [ "$answer" != "${answer#[Yy]}" ]; then
-    brew cask install java
+    brew install --cask java
 fi
 
 exit 0
