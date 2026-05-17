@@ -16,6 +16,7 @@ type InstallStepKey = "packages" | "shell" | "dotfiles" | "tools";
 type DockerStrategyId = "official" | "distro" | "podman" | "none";
 type NodeStrategyId = "mise" | "nvm" | "none";
 type ConfigKey = "zshrc" | "vimrc" | "tmux" | "htop";
+type DraggedBlock = { configKey: ConfigKey; blockId: string } | null;
 
 type OsTarget = {
   id: OsId;
@@ -47,6 +48,21 @@ type Strategy = {
   label: string;
   description: string;
   defaults?: OsId[];
+};
+
+type ConfigBlock = {
+  id: string;
+  title: string;
+  description: string;
+  shortcuts: string[];
+  enabled: boolean;
+  content: string;
+};
+
+type ConfigBlockTemplate = Omit<ConfigBlock, "enabled" | "content"> & {
+  start: number;
+  end: number;
+  enabled?: boolean;
 };
 
 type Catalog = {
@@ -130,20 +146,333 @@ right_meters=RightCPUs2 Tasks LoadAverage Uptime
 right_meter_modes=1 2 2 2
 `;
 
+const createConfigBlocks = (raw: string, templates: ConfigBlockTemplate[]): ConfigBlock[] => {
+  const lines = raw.trimEnd().split(/\r?\n/);
+  return templates.map((template) => ({
+    id: template.id,
+    title: template.title,
+    description: template.description,
+    shortcuts: template.shortcuts,
+    enabled: template.enabled ?? true,
+    content: `${lines.slice(template.start - 1, template.end).join("\n")}\n`
+  }));
+};
+
 const configDefinitions: Record<
   ConfigKey,
-  { title: string; path: string; mkdir?: string; defaultContent: string }
+  { title: string; path: string; mkdir?: string; blocks: ConfigBlock[] }
 > = {
-  zshrc: { title: ".zshrc", path: "$HOME/.zshrc", defaultContent: zshConfigRaw },
-  vimrc: { title: ".vimrc", path: "$HOME/.vimrc", defaultContent: vimConfigRaw },
-  tmux: { title: ".tmux.conf", path: "$HOME/.tmux.conf", defaultContent: tmuxConfigRaw },
+  zshrc: {
+    title: ".zshrc",
+    path: "$HOME/.zshrc",
+    blocks: createConfigBlocks(zshConfigRaw, [
+      {
+        id: "prompt",
+        title: "Prompt bootstrap",
+        description: "Loads the Powerlevel10k instant prompt before the rest of the shell starts.",
+        shortcuts: [],
+        start: 1,
+        end: 7
+      },
+      {
+        id: "history",
+        title: "History settings",
+        description: "Keeps a large shared history and avoids repeated duplicate commands.",
+        shortcuts: [],
+        start: 9,
+        end: 13
+      },
+      {
+        id: "plugins",
+        title: "oh-my-zsh plugins",
+        description: "Enables Git helpers, Docker helpers, dotenv loading, completions, and suggestions.",
+        shortcuts: [],
+        start: 15,
+        end: 18
+      },
+      {
+        id: "path",
+        title: "PATH order",
+        description: "Puts local user tools, Cargo tools, and home bin ahead of system paths.",
+        shortcuts: [],
+        start: 20,
+        end: 31
+      },
+      {
+        id: "framework",
+        title: "Shell framework",
+        description: "Loads oh-my-zsh when available and falls back to plain completion setup.",
+        shortcuts: [],
+        start: 33,
+        end: 38
+      },
+      {
+        id: "runtime-hooks",
+        title: "Runtime hooks",
+        description: "Activates mise and direnv in interactive shells when those tools exist.",
+        shortcuts: [],
+        start: 40,
+        end: 46
+      },
+      {
+        id: "environment",
+        title: "Environment",
+        description: "Sets locale, editor, visual editor, and GPG tty defaults.",
+        shortcuts: [],
+        start: 48,
+        end: 52
+      },
+      {
+        id: "history-search",
+        title: "History search keys",
+        description: "Makes Up and Down search matching command history from the current prefix.",
+        shortcuts: ["Up", "Down"],
+        start: 54,
+        end: 58
+      },
+      {
+        id: "safe-aliases",
+        title: "Prompted aliases",
+        description: "Keeps raw rm, cp, and mv untouched, and adds explicit prompted variants.",
+        shortcuts: ["rmi", "rmri", "cpi", "mvi"],
+        start: 60,
+        end: 65
+      },
+      {
+        id: "navigation",
+        title: "Navigation and listings",
+        description: "Adds short directory and listing aliases used during terminal work.",
+        shortcuts: ["cd..", "l", "ll", "la"],
+        start: 67,
+        end: 72
+      },
+      {
+        id: "tmux-docker",
+        title: "tmux and Docker aliases",
+        description: "Adds the session attach flow and common Docker Compose shortcuts.",
+        shortcuts: ["ta 0", "ta0", "tls", "tn"],
+        start: 74,
+        end: 80
+      },
+      {
+        id: "editors",
+        title: "Edit helpers",
+        description: "Adds quick commands for editing and applying the shell configuration.",
+        shortcuts: ["zshrc", "zshrc_apply"],
+        start: 82,
+        end: 83
+      },
+      {
+        id: "inspection",
+        title: "Inspection helpers",
+        description: "Adds compact helpers for listening ports, IP addresses, and PATH entries.",
+        shortcuts: ["ports", "ipb", "pathls"],
+        start: 85,
+        end: 95
+      },
+      {
+        id: "local-prompt",
+        title: "Local prompt file",
+        description: "Loads the generated Powerlevel10k local prompt file when it exists.",
+        shortcuts: [],
+        start: 97,
+        end: 97
+      }
+    ])
+  },
+  vimrc: {
+    title: ".vimrc",
+    path: "$HOME/.vimrc",
+    blocks: createConfigBlocks(vimConfigRaw, [
+      {
+        id: "core",
+        title: "Core mode",
+        description: "Starts Vim in modern mode with filetype plugins, indentation, and syntax.",
+        shortcuts: [],
+        start: 1,
+        end: 3
+      },
+      {
+        id: "encoding",
+        title: "Encoding and files",
+        description: "Sets UTF-8 defaults, safer bells, autoread, hidden buffers, swap, and undo files.",
+        shortcuts: [],
+        start: 5,
+        end: 16
+      },
+      {
+        id: "indent",
+        title: "Indentation",
+        description: "Uses two-space indentation by default with expanded tabs.",
+        shortcuts: [],
+        start: 18,
+        end: 24
+      },
+      {
+        id: "search",
+        title: "Search behavior",
+        description: "Enables incremental smart-case search and a quick mapping to clear highlights.",
+        shortcuts: ["leader", "Space"],
+        start: 26,
+        end: 30
+      },
+      {
+        id: "performance",
+        title: "Completion and redraw",
+        description: "Keeps completion local and avoids unnecessary redraw work.",
+        shortcuts: [],
+        start: 32,
+        end: 34
+      },
+      {
+        id: "interface",
+        title: "Interface",
+        description: "Shows status, ruler, line numbers, command feedback, title, mouse, and colors.",
+        shortcuts: [],
+        start: 36,
+        end: 46
+      },
+      {
+        id: "plugins",
+        title: "vim-plug setup",
+        description: "Bootstraps vim-plug and installs only vim-sensible plus EditorConfig support.",
+        shortcuts: [":PlugInstall"],
+        start: 48,
+        end: 59
+      },
+      {
+        id: "filetypes",
+        title: "Filetype indentation",
+        description: "Overrides indentation for common web, Ruby, and Python files.",
+        shortcuts: [],
+        start: 61,
+        end: 64
+      }
+    ])
+  },
+  tmux: {
+    title: ".tmux.conf",
+    path: "$HOME/.tmux.conf",
+    blocks: createConfigBlocks(tmuxConfigRaw, [
+      {
+        id: "prefix",
+        title: "Prefix and reload",
+        description: "Uses Ctrl-A as the prefix and binds reload to prefix plus r.",
+        shortcuts: ["C-a", "C-a r"],
+        start: 1,
+        end: 6
+      },
+      {
+        id: "session",
+        title: "Session behavior",
+        description: "Enables mouse support, focus events, clipboard, renumbering, and deep history.",
+        shortcuts: [],
+        start: 8,
+        end: 15
+      },
+      {
+        id: "indexes",
+        title: "Indexes",
+        description: "Starts windows and panes at 1 for easier keyboard targeting.",
+        shortcuts: ["1"],
+        start: 17,
+        end: 19
+      },
+      {
+        id: "windows",
+        title: "Windows and panes",
+        description: "Adds pane splits, vim-style pane movement, window navigation, and resize keys.",
+        shortcuts: ["c", "|", "-", "h", "j", "k", "l", "Tab"],
+        start: 21,
+        end: 38
+      },
+      {
+        id: "copy",
+        title: "Copy mode",
+        description: "Uses vi copy mode and tries common Linux clipboard tools before falling back.",
+        shortcuts: ["v", "y", "Enter"],
+        start: 40,
+        end: 45
+      },
+      {
+        id: "status",
+        title: "Status line",
+        description: "Sets a compact status line with host, session, date, time, window, and pane.",
+        shortcuts: [],
+        start: 47,
+        end: 59
+      },
+      {
+        id: "tpm",
+        title: "TPM block",
+        description: "Keeps the tmux plugin manager block available but commented by default.",
+        shortcuts: ["prefix", "I"],
+        start: 61,
+        end: 65
+      }
+    ])
+  },
   htop: {
     title: "htoprc",
     path: "$HOME/.config/htop/htoprc",
     mkdir: "$HOME/.config/htop",
-    defaultContent: htopConfigDefault
+    blocks: createConfigBlocks(htopConfigDefault, [
+      {
+        id: "columns",
+        title: "Columns and sorting",
+        description: "Chooses the visible process columns and sorts by memory usage.",
+        shortcuts: ["F6"],
+        start: 1,
+        end: 5
+      },
+      {
+        id: "visibility",
+        title: "Visibility",
+        description: "Controls thread display, merged commands, highlighting, and path behavior.",
+        shortcuts: ["H", "K"],
+        start: 6,
+        end: 24
+      },
+      {
+        id: "runtime",
+        title: "Runtime display",
+        description: "Sets color scheme, mouse support, refresh delay, and CPU display behavior.",
+        shortcuts: ["F2", "F9"],
+        start: 25,
+        end: 31
+      },
+      {
+        id: "meters",
+        title: "Header meters",
+        description: "Shows CPU, memory, swap, task, load, and uptime meters.",
+        shortcuts: [],
+        start: 32,
+        end: 35
+      }
+    ])
   }
 };
+
+const createInitialConfigBlocks = () =>
+  Object.fromEntries(
+    (Object.keys(configDefinitions) as ConfigKey[]).map((key) => [
+      key,
+      configDefinitions[key].blocks.map((block) => ({ ...block }))
+    ])
+  ) as Record<ConfigKey, ConfigBlock[]>;
+
+const createInitialActiveBlocks = () =>
+  Object.fromEntries(
+    (Object.keys(configDefinitions) as ConfigKey[]).map((key) => [key, configDefinitions[key].blocks[0].id])
+  ) as Record<ConfigKey, string>;
+
+const buildConfigContent = (blocks: ConfigBlock[]) =>
+  blocks
+    .filter((block) => block.enabled)
+    .map((block) => block.content.trimEnd())
+    .filter(Boolean)
+    .join("\n\n")
+    .concat("\n");
 
 const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
 
@@ -162,9 +491,30 @@ const defaultDockerStrategy = (osId: OsId): DockerStrategyId => {
 
 const packageNamesForOs = (item: CatalogPackage, osId: OsId) => item.packages[osId] ?? [];
 
+const initialParams =
+  typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
+
+const readInitialView = (): ViewId => {
+  const view = initialParams.get("view");
+  return view === "configs" || view === "summary" || view === "install" ? view : "install";
+};
+
+const readInitialOs = (): OsId => {
+  const os = initialParams.get("os");
+  return catalog.osTargets.some((target) => target.id === os) ? (os as OsId) : "ubuntu";
+};
+
+const readInitialConfig = (): ConfigKey => {
+  const config = initialParams.get("config");
+  return config === "vimrc" || config === "tmux" || config === "htop" || config === "zshrc"
+    ? config
+    : "zshrc";
+};
+
 function App() {
-  const [activeView, setActiveView] = useState<ViewId>("install");
-  const [activeOs, setActiveOs] = useState<OsId>("ubuntu");
+  const initialOs = readInitialOs();
+  const [activeView, setActiveView] = useState<ViewId>(readInitialView);
+  const [activeOs, setActiveOs] = useState<OsId>(initialOs);
   const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>(
     catalog.packages.filter((item) => item.defaultSelected).map((item) => item.id)
   );
@@ -179,19 +529,23 @@ function App() {
   });
   const [query, setQuery] = useState("");
   const [customPackages, setCustomPackages] = useState("");
-  const [dockerStrategy, setDockerStrategy] = useState<DockerStrategyId>("official");
+  const [dockerStrategy, setDockerStrategy] = useState<DockerStrategyId>(() => {
+    const strategy = defaultDockerStrategy(initialOs);
+    return strategy === "none" ? "official" : strategy;
+  });
+  const [dockerEnabled, setDockerEnabled] = useState(
+    initialParams.get("docker") === "off" ? false : defaultDockerStrategy(initialOs) !== "none"
+  );
   const [nodeStrategy, setNodeStrategy] = useState<NodeStrategyId>("mise");
   const [installTpm, setInstallTpm] = useState(false);
   const [assumeYes, setAssumeYes] = useState(true);
   const [repoRef, setRepoRef] = useState(DEFAULT_REF);
   const [copied, setCopied] = useState<string | null>(null);
-  const [activeConfig, setActiveConfig] = useState<ConfigKey>("zshrc");
-  const [configContents, setConfigContents] = useState<Record<ConfigKey, string>>({
-    zshrc: zshConfigRaw,
-    vimrc: vimConfigRaw,
-    tmux: tmuxConfigRaw,
-    htop: htopConfigDefault
-  });
+  const [activeConfig, setActiveConfig] = useState<ConfigKey>(readInitialConfig);
+  const [configBlocks, setConfigBlocks] = useState<Record<ConfigKey, ConfigBlock[]>>(createInitialConfigBlocks);
+  const [activeConfigBlockIds, setActiveConfigBlockIds] =
+    useState<Record<ConfigKey, string>>(createInitialActiveBlocks);
+  const [draggedBlock, setDraggedBlock] = useState<DraggedBlock>(null);
 
   const activeTarget = catalog.osTargets.find((target) => target.id === activeOs) ?? catalog.osTargets[0];
   const selectedPackageItems = useMemo(
@@ -216,6 +570,7 @@ function App() {
         stepSelection,
         assumeYes,
         installTpm,
+        dockerEnabled,
         dockerStrategy,
         nodeStrategy,
         repoRef
@@ -224,6 +579,7 @@ function App() {
       activeOs,
       activeTarget,
       assumeYes,
+      dockerEnabled,
       dockerStrategy,
       installTpm,
       nodeStrategy,
@@ -231,6 +587,21 @@ function App() {
       selectedPackageNames,
       stepSelection
     ]
+  );
+  const configContents = useMemo(
+    () =>
+      Object.fromEntries(
+        (Object.keys(configBlocks) as ConfigKey[]).map((key) => [key, buildConfigContent(configBlocks[key])])
+      ) as Record<ConfigKey, string>,
+    [configBlocks]
+  );
+  const dockerStrategies = useMemo(
+    () => catalog.strategies.docker.filter((strategy) => strategy.id !== "none"),
+    []
+  );
+  const nodeStrategies = useMemo(
+    () => catalog.strategies.node.filter((strategy) => strategy.id !== "none"),
+    []
   );
   const selectedGroups = useMemo(
     () =>
@@ -248,8 +619,10 @@ function App() {
   );
 
   const switchOs = (osId: OsId) => {
+    const nextDockerStrategy = defaultDockerStrategy(osId);
     setActiveOs(osId);
-    setDockerStrategy(defaultDockerStrategy(osId));
+    setDockerEnabled(nextDockerStrategy !== "none");
+    setDockerStrategy(nextDockerStrategy === "none" ? "official" : nextDockerStrategy);
   };
 
   const togglePackage = (packageId: string) => {
@@ -279,6 +652,51 @@ function App() {
   };
 
   const configCommand = buildConfigWriteCommand(configDefinitions[activeConfig], configContents[activeConfig]);
+  const updateConfigBlock = (blockId: string, updater: (block: ConfigBlock) => ConfigBlock) => {
+    setConfigBlocks((current) => ({
+      ...current,
+      [activeConfig]: current[activeConfig].map((block) => (block.id === blockId ? updater(block) : block))
+    }));
+  };
+  const moveConfigBlock = (blockId: string, direction: -1 | 1) => {
+    setConfigBlocks((current) => {
+      const blocks = [...current[activeConfig]];
+      const index = blocks.findIndex((block) => block.id === blockId);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= blocks.length) {
+        return current;
+      }
+      const [block] = blocks.splice(index, 1);
+      blocks.splice(nextIndex, 0, block);
+      return { ...current, [activeConfig]: blocks };
+    });
+  };
+  const dropConfigBlock = (targetBlockId: string) => {
+    if (!draggedBlock || draggedBlock.configKey !== activeConfig || draggedBlock.blockId === targetBlockId) {
+      setDraggedBlock(null);
+      return;
+    }
+
+    setConfigBlocks((current) => {
+      const blocks = [...current[activeConfig]];
+      const fromIndex = blocks.findIndex((block) => block.id === draggedBlock.blockId);
+      const toIndex = blocks.findIndex((block) => block.id === targetBlockId);
+      if (fromIndex < 0 || toIndex < 0) {
+        return current;
+      }
+      const [block] = blocks.splice(fromIndex, 1);
+      blocks.splice(toIndex, 0, block);
+      return { ...current, [activeConfig]: blocks };
+    });
+    setDraggedBlock(null);
+  };
+  const resetConfigBlock = (blockId: string) => {
+    const originalBlock = configDefinitions[activeConfig].blocks.find((block) => block.id === blockId);
+    if (!originalBlock) {
+      return;
+    }
+    updateConfigBlock(blockId, (block) => ({ ...block, content: originalBlock.content }));
+  };
 
   return (
     <main className="app-shell">
@@ -301,20 +719,7 @@ function App() {
         </nav>
       </header>
 
-      <section className="os-strip" aria-label="Operating system">
-        {catalog.osTargets.map((target) => (
-          <button
-            className={activeOs === target.id ? "os-card active" : "os-card"}
-            key={target.id}
-            type="button"
-            onClick={() => switchOs(target.id)}
-          >
-            <strong>{target.label}</strong>
-            <span>{target.packageManager}</span>
-            {!target.implemented && <small>preview</small>}
-          </button>
-        ))}
-      </section>
+      <TargetSelector activeOs={activeOs} activeTarget={activeTarget} onChange={switchOs} />
 
       {activeView === "install" && (
         <section className="main-grid">
@@ -403,17 +808,19 @@ function App() {
                   <h2>Docker and Node</h2>
                 </div>
               </div>
-              <StrategySelector
+              <DockerStrategyControl
                 activeId={dockerStrategy}
-                label="Docker"
+                enabled={dockerEnabled}
                 onChange={(value) => setDockerStrategy(value as DockerStrategyId)}
-                strategies={catalog.strategies.docker}
+                onEnabledChange={(enabled) => setDockerEnabled(enabled)}
+                strategies={dockerStrategies}
               />
               <StrategySelector
                 activeId={nodeStrategy}
                 label="Node"
                 onChange={(value) => setNodeStrategy(value as NodeStrategyId)}
-                strategies={catalog.strategies.node}
+                recommendedId="mise"
+                strategies={nodeStrategies}
               />
             </section>
           </div>
@@ -423,6 +830,7 @@ function App() {
             assumeYes={assumeYes}
             commandSet={commandSet}
             copied={copied}
+            dockerEnabled={dockerEnabled}
             installTpm={installTpm}
             repoRef={repoRef}
             selectedPackageNames={selectedPackageNames}
@@ -456,16 +864,25 @@ function App() {
                   </button>
                 ))}
               </div>
-              <textarea
-                className="config-editor"
-                spellCheck={false}
-                value={configContents[activeConfig]}
-                onChange={(event) =>
-                  setConfigContents((current) => ({
-                    ...current,
-                    [activeConfig]: event.target.value
-                  }))
+              <ConfigBlockEditor
+                activeBlockId={activeConfigBlockIds[activeConfig]}
+                blocks={configBlocks[activeConfig]}
+                configKey={activeConfig}
+                draggedBlock={draggedBlock}
+                generatedContent={configContents[activeConfig]}
+                onActiveBlockChange={(blockId) =>
+                  setActiveConfigBlockIds((current) => ({ ...current, [activeConfig]: blockId }))
                 }
+                onBlockContentChange={(blockId, content) =>
+                  updateConfigBlock(blockId, (block) => ({ ...block, content }))
+                }
+                onBlockDrop={dropConfigBlock}
+                onBlockMove={moveConfigBlock}
+                onBlockReset={resetConfigBlock}
+                onBlockToggle={(blockId) =>
+                  updateConfigBlock(blockId, (block) => ({ ...block, enabled: !block.enabled }))
+                }
+                onDragStart={(blockId) => setDraggedBlock({ configKey: activeConfig, blockId })}
               />
             </section>
           </div>
@@ -494,6 +911,7 @@ function App() {
           activeTarget={activeTarget}
           commandSet={commandSet}
           configContents={configContents}
+          dockerEnabled={dockerEnabled}
           dockerStrategy={dockerStrategy}
           nodeStrategy={nodeStrategy}
           selectedPackageNames={selectedPackageNames}
@@ -503,6 +921,40 @@ function App() {
         />
       )}
     </main>
+  );
+}
+
+function TargetSelector({
+  activeOs,
+  activeTarget,
+  onChange
+}: {
+  activeOs: OsId;
+  activeTarget: OsTarget;
+  onChange: (osId: OsId) => void;
+}) {
+  return (
+    <section className="target-bar" aria-label="Operating system">
+      <div>
+        <p className="section-label">Target OS</p>
+        <strong>{activeTarget.label}</strong>
+        <span>
+          {activeTarget.packageManager}
+          {!activeTarget.implemented ? " preview" : ""}
+        </span>
+      </div>
+      <label className="target-select">
+        <span>Change target</span>
+        <select value={activeOs} onChange={(event) => onChange(event.target.value as OsId)}>
+          {catalog.osTargets.map((target) => (
+            <option key={target.id} value={target.id}>
+              {target.label} - {target.packageManager}
+              {!target.implemented ? " preview" : ""}
+            </option>
+          ))}
+        </select>
+      </label>
+    </section>
   );
 }
 
@@ -601,11 +1053,13 @@ function StrategySelector({
   activeId,
   label,
   onChange,
+  recommendedId,
   strategies
 }: {
   activeId: string;
   label: string;
   onChange: (value: string) => void;
+  recommendedId?: string;
   strategies: Strategy[];
 }) {
   return (
@@ -619,11 +1073,201 @@ function StrategySelector({
             type="button"
             onClick={() => onChange(strategy.id)}
           >
-            <strong>{strategy.label}</strong>
+            <strong>
+              {strategy.label}
+              {strategy.id === recommendedId && <small>Recommended</small>}
+            </strong>
             <span>{strategy.description}</span>
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+function DockerStrategyControl({
+  activeId,
+  enabled,
+  onChange,
+  onEnabledChange,
+  strategies
+}: {
+  activeId: DockerStrategyId;
+  enabled: boolean;
+  onChange: (value: string) => void;
+  onEnabledChange: (enabled: boolean) => void;
+  strategies: Strategy[];
+}) {
+  return (
+    <div className="strategy-block">
+      <div className="strategy-heading">
+        <h3>Docker</h3>
+        <label className="toggle-row">
+          <input type="checkbox" checked={enabled} onChange={() => onEnabledChange(!enabled)} />
+          <span>{enabled ? "On" : "Off"}</span>
+        </label>
+      </div>
+      {enabled && (
+        <div className="strategy-grid">
+          {strategies.map((strategy, index) => (
+            <button
+              className={activeId === strategy.id ? "strategy-card active" : "strategy-card"}
+              key={strategy.id}
+              type="button"
+              onClick={() => onChange(strategy.id)}
+            >
+              <strong>
+                {strategy.label}
+                {index === 0 && <small>Recommended</small>}
+              </strong>
+              <span>{strategy.description}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {!enabled && (
+        <p className="muted compact-note">
+          Container runtime install is disabled. The generated Ubuntu command uses --docker-strategy none.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ConfigBlockEditor({
+  activeBlockId,
+  blocks,
+  configKey,
+  draggedBlock,
+  generatedContent,
+  onActiveBlockChange,
+  onBlockContentChange,
+  onBlockDrop,
+  onBlockMove,
+  onBlockReset,
+  onBlockToggle,
+  onDragStart
+}: {
+  activeBlockId: string;
+  blocks: ConfigBlock[];
+  configKey: ConfigKey;
+  draggedBlock: DraggedBlock;
+  generatedContent: string;
+  onActiveBlockChange: (blockId: string) => void;
+  onBlockContentChange: (blockId: string, content: string) => void;
+  onBlockDrop: (blockId: string) => void;
+  onBlockMove: (blockId: string, direction: -1 | 1) => void;
+  onBlockReset: (blockId: string) => void;
+  onBlockToggle: (blockId: string) => void;
+  onDragStart: (blockId: string) => void;
+}) {
+  const activeBlock = blocks.find((block) => block.id === activeBlockId) ?? blocks[0];
+  const activeIndex = blocks.findIndex((block) => block.id === activeBlock.id);
+
+  return (
+    <div className="config-builder">
+      <div className="block-list" aria-label={`${configDefinitions[configKey].title} blocks`}>
+        {blocks.map((block, index) => (
+          <div
+            className={[
+              "config-block-card",
+              block.id === activeBlock.id ? "active" : "",
+              draggedBlock?.blockId === block.id ? "dragging" : ""
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            draggable
+            key={block.id}
+            onClick={() => onActiveBlockChange(block.id)}
+            onDragOver={(event) => event.preventDefault()}
+            onDragStart={() => onDragStart(block.id)}
+            onDrop={() => onBlockDrop(block.id)}
+          >
+            <button
+              aria-label={`Move ${block.title} up`}
+              className="icon-button"
+              disabled={index === 0}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onBlockMove(block.id, -1);
+              }}
+            >
+              Up
+            </button>
+            <button
+              aria-label={`Move ${block.title} down`}
+              className="icon-button"
+              disabled={index === blocks.length - 1}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onBlockMove(block.id, 1);
+              }}
+            >
+              Down
+            </button>
+            <label className="block-toggle" onClick={(event) => event.stopPropagation()}>
+              <input type="checkbox" checked={block.enabled} onChange={() => onBlockToggle(block.id)} />
+              <span>{block.enabled ? "On" : "Off"}</span>
+            </label>
+            <div className="block-card-copy">
+              <strong>{block.title}</strong>
+              <span>{block.description}</span>
+              {block.shortcuts.length > 0 && <KeycapList keys={block.shortcuts} />}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <section className="block-detail" aria-label="Selected config block">
+        <div className="block-detail-heading">
+          <div>
+            <p className="section-label">Selected block</p>
+            <h3>{activeBlock.title}</h3>
+          </div>
+          <span className="block-position">
+            {activeIndex + 1}/{blocks.length}
+          </span>
+        </div>
+        <p className="muted">{activeBlock.description}</p>
+        {activeBlock.shortcuts.length > 0 && <KeycapList keys={activeBlock.shortcuts} />}
+        <textarea
+          className="block-editor"
+          spellCheck={false}
+          value={activeBlock.content}
+          onChange={(event) => onBlockContentChange(activeBlock.id, event.target.value)}
+        />
+        <div className="block-actions">
+          <button type="button" onClick={() => onBlockMove(activeBlock.id, -1)} disabled={activeIndex === 0}>
+            Move up
+          </button>
+          <button
+            type="button"
+            onClick={() => onBlockMove(activeBlock.id, 1)}
+            disabled={activeIndex === blocks.length - 1}
+          >
+            Move down
+          </button>
+          <button type="button" onClick={() => onBlockReset(activeBlock.id)}>
+            Reset block
+          </button>
+        </div>
+        <details className="generated-config">
+          <summary>Generated file text</summary>
+          <textarea className="config-editor" readOnly spellCheck={false} value={generatedContent} />
+        </details>
+      </section>
+    </div>
+  );
+}
+
+function KeycapList({ keys }: { keys: string[] }) {
+  return (
+    <div className="keycap-list" aria-label="Keyboard shortcuts">
+      {keys.map((keyName) => (
+        <kbd key={keyName}>{keyName}</kbd>
+      ))}
     </div>
   );
 }
@@ -633,6 +1277,7 @@ function CommandPanel({
   assumeYes,
   commandSet,
   copied,
+  dockerEnabled,
   installTpm,
   repoRef,
   selectedPackageNames,
@@ -645,6 +1290,7 @@ function CommandPanel({
   assumeYes: boolean;
   commandSet: { primary: string; local: string; packageCommand: string };
   copied: string | null;
+  dockerEnabled: boolean;
   installTpm: boolean;
   repoRef: string;
   selectedPackageNames: string[];
@@ -670,6 +1316,7 @@ function CommandPanel({
         <input type="checkbox" checked={installTpm} onChange={() => setInstallTpm(!installTpm)} />
         <span>Install TPM</span>
       </label>
+      <p className="muted compact-note">Docker install: {dockerEnabled ? "on" : "off"}</p>
       <div className="mini-summary">
         <strong>{selectedPackageNames.length}</strong>
         <span>{activeTarget.packageManager} packages selected</span>
@@ -699,6 +1346,7 @@ function SummaryView({
   commandSet,
   configContents,
   copied,
+  dockerEnabled,
   dockerStrategy,
   nodeStrategy,
   selectedPackageNames,
@@ -709,6 +1357,7 @@ function SummaryView({
   commandSet: { primary: string; local: string; packageCommand: string };
   configContents: Record<ConfigKey, string>;
   copied: string | null;
+  dockerEnabled: boolean;
   dockerStrategy: DockerStrategyId;
   nodeStrategy: NodeStrategyId;
   selectedPackageNames: string[];
@@ -737,7 +1386,7 @@ function SummaryView({
           </div>
           <div>
             <dt>Docker strategy</dt>
-            <dd>{dockerStrategy}</dd>
+            <dd>{dockerEnabled ? dockerStrategy : "off"}</dd>
           </div>
           <div>
             <dt>Node strategy</dt>
@@ -791,6 +1440,7 @@ type BuildCommandInput = {
   stepSelection: Record<InstallStepKey, boolean>;
   assumeYes: boolean;
   installTpm: boolean;
+  dockerEnabled: boolean;
   dockerStrategy: DockerStrategyId;
   nodeStrategy: NodeStrategyId;
   repoRef: string;
@@ -816,7 +1466,7 @@ function buildCommands(input: BuildCommandInput) {
     } else {
       flags.push("--skip-apt");
     }
-    flags.push("--docker-strategy", input.dockerStrategy);
+    flags.push("--docker-strategy", input.dockerEnabled ? input.dockerStrategy : "none");
   }
 
   if (input.stepSelection.tools) {
@@ -834,7 +1484,12 @@ function buildCommands(input: BuildCommandInput) {
   return {
     primary: `curl -fsSL ${shellQuote(url)} | ${envPrefix}bash -s -- ${setupArgs}`,
     local: `./setup.sh ${setupArgs}`,
-    packageCommand: buildPackageCommand(input.activeOs, input.selectedPackageNames, input.dockerStrategy, input.nodeStrategy)
+    packageCommand: buildPackageCommand(
+      input.activeOs,
+      input.selectedPackageNames,
+      input.dockerEnabled ? input.dockerStrategy : "none",
+      input.nodeStrategy
+    )
   };
 }
 
@@ -887,7 +1542,7 @@ function nodePreviewLine(strategy: NodeStrategyId) {
 }
 
 function buildConfigWriteCommand(
-  definition: { path: string; mkdir?: string; defaultContent: string },
+  definition: { path: string; mkdir?: string },
   content: string
 ) {
   const mkdirLine = definition.mkdir ? `mkdir -p ${definition.mkdir}\n` : "";
