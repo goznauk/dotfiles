@@ -33,10 +33,17 @@ npm run dev
 npm run build
 ```
 
+## Check
+
+```sh
+npm run check
+```
+
 Useful screenshot URLs:
 
 ```text
 /?view=install
+/?view=install&group=base
 /?view=configs&config=tmux
 /?view=summary
 /?view=install&docker=off

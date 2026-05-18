@@ -33,6 +33,13 @@ npm run dev
 See [Pages integration](./docs/pages-integration.md) for the `goznauk.com`
 submodule deployment path.
 
+Validation:
+
+```sh
+cd chooser
+npm run check
+```
+
 ## macOS
 
 The macOS setup path is still legacy and uses `.env`.

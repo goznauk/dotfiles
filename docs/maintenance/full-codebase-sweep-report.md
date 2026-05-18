@@ -160,3 +160,41 @@ integration notes, Karabiner JSON, binary asset inventory.
 - Harden legacy macOS script basics.
 - Split or test chooser command generation.
 - Improve copy failure handling and summary empty states.
+
+## Iteration 2
+
+### Files and areas inspected
+
+`packages/catalog.json`, `Ubuntu/packages/core.txt`,
+`Ubuntu/packages/optional.txt`, `chooser/package.json`, `chooser/README.md`,
+top-level `README.md`, and validation command structure.
+
+### Main findings
+
+- The chooser and Ubuntu installer both depend on package catalog consistency,
+  but the repository had no automated catalog checks.
+- Selected Ubuntu package names need to stay aligned with the apt package lists
+  because the chooser emits an exact `--apt-packages` list.
+- Package notes are now part of the UI, so missing notes reduce usefulness of
+  the expanded package tree.
+
+### Improvements implemented
+
+- Added `scripts/validate-catalog.mjs`.
+- Added `npm run check` for chooser validation plus production build.
+- Documented the check command and added an expanded package screenshot URL.
+
+### Tests and checks run
+
+- `node scripts/validate-catalog.mjs`
+- `npm run check`
+- `bash -n setup.sh install.sh Ubuntu/setup-ubuntu.sh MacOS/setup-mac.sh`
+
+### Commits created
+
+- Pending commit for catalog validation.
+
+### Deferred items
+
+- Add shell and dotfile validation to one repo-level command.
+- Consider focused tests for command generation after helper extraction.
