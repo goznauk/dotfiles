@@ -53,7 +53,19 @@ npm run check
 ```
 
 The check command validates the package catalog, runs focused command-builder
-tests, then builds the production app.
+tests, checks lint and format rules, rejects non-ASCII typography, then builds
+the production app.
+
+Formatting:
+
+```sh
+npm run format
+npm run lint
+```
+
+Linting requires braces for control-flow blocks, allows compact single-line
+blocks such as `{ return value; }`, and rejects smart quotes or dash-like
+Unicode characters in TypeScript UI text.
 
 Useful screenshot URLs:
 

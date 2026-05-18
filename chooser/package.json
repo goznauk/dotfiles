@@ -1,12 +1,16 @@
 {
   "name": "@goznauk/dotfiles-chooser",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",
     "build": "tsc && vite build",
-    "check": "node ../scripts/validate-catalog.mjs && npm run test:commands && npm run build",
+    "check": "node ../scripts/validate-catalog.mjs && npm run lint && npm run test:commands && npm run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . && npm run format:check && npm run lint:ascii",
+    "lint:ascii": "node ../scripts/check-ascii.mjs src index.html package.json tsconfig.json tsconfig.test.json vite.config.ts eslint.config.js .prettierrc.json",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "test:commands": "tsc -p tsconfig.test.json && node ../.tmp/command-tests/commandBuilder.test.js"
   },
@@ -15,10 +19,16 @@
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
+    "eslint": "^10.4.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "prettier": "^3.8.3",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.59.4",
     "vite": "^7.3.0"
   }
 }

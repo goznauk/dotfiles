@@ -53,15 +53,23 @@ const baseInput: BuildCommandInput = {
 
 assertEqual(shellQuote("feature/test's"), "'feature/test'\\''s'", "shellQuote escapes single quotes");
 assertEqual(
-  shellDoubleQuote("echo \"$HOME`test`!\""),
-  "\"echo \\\"\\$HOME\\`test\\`\\!\\\"\"",
+  shellDoubleQuote('echo "$HOME`test`!"'),
+  '"echo \\"\\$HOME\\`test\\`\\!\\""',
   "shellDoubleQuote escapes interactive shell metacharacters"
 );
 
 const defaultCommands = buildCommands(baseInput);
 assertIncludes(defaultCommands.primary, "sudo apt update", "primary command prepares apt metadata first");
-assertIncludes(defaultCommands.primary, "sudo apt install -y 'ca-certificates' 'curl' 'git' 'tmux'", "primary command installs bootstrap tools");
-assertIncludes(defaultCommands.primary, "tmux new-session -A -s dotfiles", "primary command runs inside tmux by default");
+assertIncludes(
+  defaultCommands.primary,
+  "sudo apt install -y 'ca-certificates' 'curl' 'git' 'tmux'",
+  "primary command installs bootstrap tools"
+);
+assertIncludes(
+  defaultCommands.primary,
+  "tmux new-session -A -s dotfiles",
+  "primary command runs inside tmux by default"
+);
 assertIncludes(defaultCommands.primary, "curl -fsSL", "primary command downloads installer");
 assertNotIncludes(defaultCommands.primary, "DOTFILES_REPO_REF=", "default ref does not need env prefix");
 
@@ -89,16 +97,8 @@ const customRefCommands = buildCommands({
   runInTmux: false,
   repoRef: "feature/test's"
 });
-assertIncludes(
-  customRefCommands.primary,
-  "DOTFILES_REPO_REF='feature/test'\\''s'",
-  "custom ref is shell quoted"
-);
-assertIncludes(
-  customRefCommands.primary,
-  "feature/test'\\''s/install.sh",
-  "custom ref is used in raw GitHub URL"
-);
+assertIncludes(customRefCommands.primary, "DOTFILES_REPO_REF='feature/test'\\''s'", "custom ref is shell quoted");
+assertIncludes(customRefCommands.primary, "feature/test'\\''s/install.sh", "custom ref is used in raw GitHub URL");
 
 const noPackageCommands = buildCommands({
   ...baseInput,
@@ -115,11 +115,7 @@ const skippedPackageStep = buildCommands({
   }
 });
 assertIncludes(skippedPackageStep.primary, "'--skip-apt'", "disabled package step skips apt");
-assertNotIncludes(
-  skippedPackageStep.primary,
-  "'--docker-strategy'",
-  "disabled package step omits docker strategy"
-);
+assertNotIncludes(skippedPackageStep.primary, "'--docker-strategy'", "disabled package step omits docker strategy");
 
 assertIncludes(
   buildPackageCommand("macos", "26.5", ["git", "node"], "none", "nvm", "mise", "none"),

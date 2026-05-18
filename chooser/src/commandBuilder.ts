@@ -75,7 +75,7 @@ export const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}
 export const shellDoubleQuote = (value: string) =>
   `"${value
     .replaceAll("\\", "\\\\")
-    .replaceAll("\"", "\\\"")
+    .replaceAll('"', '\\"')
     .replaceAll("$", "\\$")
     .replaceAll("`", "\\`")
     .replaceAll("!", "\\!")}"`;
@@ -159,13 +159,8 @@ function wrapSetupCommand(
   }
 
   const packages =
-    mode === "remote"
-      ? ["ca-certificates", "curl", "git", ...(runInTmux ? ["tmux"] : [])]
-      : runInTmux
-      ? ["tmux"]
-      : [];
-  const packageInstall =
-    packages.length > 0 ? `sudo apt install -y ${packages.map(shellQuote).join(" ")} && ` : "";
+    mode === "remote" ? ["ca-certificates", "curl", "git", ...(runInTmux ? ["tmux"] : [])] : runInTmux ? ["tmux"] : [];
+  const packageInstall = packages.length > 0 ? `sudo apt install -y ${packages.map(shellQuote).join(" ")} && ` : "";
 
   return `sudo apt update && ${packageInstall}${setupCommand}`;
 }
@@ -185,12 +180,12 @@ export function buildPackageCommand(
         ? `sudo apt install -y ${packages.map(shellQuote).join(" ")}`
         : "# No apt packages selected"
       : osId === "macos"
-      ? packages.length > 0
-        ? `brew install ${packages.map(shellQuote).join(" ")}`
-        : "# No brew packages selected"
-      : packages.length > 0
-        ? `sudo dnf install -y ${packages.map(shellQuote).join(" ")}`
-        : "# No dnf packages selected";
+        ? packages.length > 0
+          ? `brew install ${packages.map(shellQuote).join(" ")}`
+          : "# No brew packages selected"
+        : packages.length > 0
+          ? `sudo dnf install -y ${packages.map(shellQuote).join(" ")}`
+          : "# No dnf packages selected";
   const targetLine = targetVersion.trim() ? `# Target OS version: ${targetVersion.trim()}` : "";
   const dockerLine = dockerPreviewLine(osId, dockerStrategy);
   const nodeLine = nodePreviewLine(nodeStrategy);
@@ -251,10 +246,7 @@ function javaPreviewLine(osId: CommandOsId, strategy: JavaStrategyId) {
   return osId === "ubuntu" ? "sudo apt install -y openjdk-21-jdk" : "sudo dnf install -y java-21-openjdk-devel";
 }
 
-export function buildConfigWriteCommand(
-  definition: { path: string; mkdir?: string },
-  content: string
-) {
+export function buildConfigWriteCommand(definition: { path: string; mkdir?: string }, content: string) {
   const mkdirLine = definition.mkdir ? `mkdir -p ${definition.mkdir}\n` : "";
   return `${mkdirLine}cat > ${definition.path} <<'EOF'\n${content.replace(/\n?$/, "\n")}EOF`;
 }
