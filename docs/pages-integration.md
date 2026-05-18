@@ -25,7 +25,7 @@ Add a build step after checkout and submodule update:
   working-directory: vendor/dotfiles/chooser
   run: |
     npm ci
-    npm run build
+    npm run check
 ```
 
 Copy the built app during site assembly:

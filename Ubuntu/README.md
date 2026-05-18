@@ -29,8 +29,11 @@ Useful variants:
 ./setup.sh ubuntu --yes --apt-packages git,zsh,vim,tmux
 ./setup.sh ubuntu --yes --optional-packages bat,eza,btop
 ./setup.sh ubuntu --yes --no-optional-packages
+./setup.sh ubuntu --yes --target-version 26.04
 ./setup.sh ubuntu --yes --docker-strategy official
 ./setup.sh ubuntu --yes --node-strategy nvm
+./setup.sh ubuntu --yes --python-strategy mise
+./setup.sh ubuntu --yes --java-strategy mise-temurin-21
 ```
 
 ## What it installs
@@ -42,6 +45,8 @@ Useful variants:
 - Node LTS through `mise` by default, or `nvm` with `--node-strategy nvm`.
 - Container runtime through `--docker-strategy`: Docker official repository,
   Ubuntu packages, Podman compatibility, or none.
+- Target release check through `--target-version`, which warns before
+  continuing if the detected Ubuntu `VERSION_ID` differs.
 - Shell tools: `zsh`, oh-my-zsh, Powerlevel10k, syntax highlighting,
   autosuggestions, completions, `direnv`, `ripgrep`, `fd`, `fzf`, `jq`, `tmux`,
   and `vim`.

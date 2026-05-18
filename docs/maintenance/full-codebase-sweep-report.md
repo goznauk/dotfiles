@@ -397,3 +397,41 @@ skip warning.
 
 - Browser screenshot through the in-app browser runtime still times out in this
   environment, so visual capture uses headless Chrome as the fallback.
+
+## Iteration 8
+
+### Files and areas inspected
+
+Top-level repository conventions, Ubuntu README examples, Pages integration
+workflow notes, validation commands, and source formatting expectations.
+
+### Main findings
+
+- The repository had no editor-level formatting guidance.
+- Ubuntu README examples did not show the newer target version, Python, and Java
+  strategy flags.
+- Pages integration still referenced `npm run build`, missing the stronger
+  `npm run check` path.
+
+### Improvements implemented
+
+- Added `.editorconfig` for consistent line endings, final newlines, and
+  two-space indentation in source and docs.
+- Updated Ubuntu README examples for target version, Python, and Java strategy
+  flags.
+- Updated Pages integration to run `npm run check`.
+
+### Tests and checks run
+
+- `./scripts/check.sh`
+
+The root check passed with the known Vite Node version warning and tmux sandbox
+skip warning.
+
+### Commits created
+
+- Pending commit for developer documentation and formatting conventions.
+
+### Deferred items
+
+- Add CI workflow only when this branch is ready to publish automation.
