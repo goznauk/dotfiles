@@ -498,6 +498,40 @@
         "label": "None",
         "description": "Skip Node setup."
       }
+    ],
+    "python": [
+      {
+        "id": "system-uv",
+        "label": "System Python plus uv",
+        "description": "Use distro Python packages with uv and pipx for project tools."
+      },
+      {
+        "id": "mise",
+        "label": "mise Python",
+        "description": "Install a managed Python runtime through mise."
+      },
+      {
+        "id": "none",
+        "label": "None",
+        "description": "Skip extra Python runtime setup."
+      }
+    ],
+    "java": [
+      {
+        "id": "mise-temurin-21",
+        "label": "Temurin 21 through mise",
+        "description": "Install an LTS Java runtime through mise."
+      },
+      {
+        "id": "distro-openjdk-21",
+        "label": "OpenJDK 21 package",
+        "description": "Use the OS package repository for OpenJDK."
+      },
+      {
+        "id": "none",
+        "label": "None",
+        "description": "Skip Java runtime setup."
+      }
     ]
   }
 }

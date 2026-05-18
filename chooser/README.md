@@ -11,9 +11,11 @@ Current behavior:
 - Package names come from `../packages/catalog.json`.
 - Docker uses an on/off toggle. When enabled, strategy choices are shown with
   the recommended path first.
-- Config editors expose `.zshrc`, `.vimrc`, `.tmux.conf`, and `htoprc` as
-  selectable, reorderable blocks with descriptions, keycaps, and editable block
-  content.
+- Toolchain choices cover Node, Python, Java, and containers. Optional runtime
+  installs use toggles instead of visible skip cards.
+- Config editors expose `.zshrc`, `.vimrc`, `.tmux.conf`, and `htoprc` as an
+  editor-style block view with clickable lines, descriptions, keycaps, reorder
+  controls, and editable block content.
 
 ## Develop
 

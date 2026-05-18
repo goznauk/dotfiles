@@ -15,6 +15,8 @@ type ViewId = "install" | "configs" | "summary";
 type InstallStepKey = "packages" | "shell" | "dotfiles" | "tools";
 type DockerStrategyId = "official" | "distro" | "podman" | "none";
 type NodeStrategyId = "mise" | "nvm" | "none";
+type PythonStrategyId = "system-uv" | "mise" | "none";
+type JavaStrategyId = "mise-temurin-21" | "distro-openjdk-21" | "none";
 type ConfigKey = "zshrc" | "vimrc" | "tmux" | "htop";
 type DraggedBlock = { configKey: ConfigKey; blockId: string } | null;
 
@@ -72,6 +74,8 @@ type Catalog = {
   strategies: {
     docker: Strategy[];
     node: Strategy[];
+    python: Strategy[];
+    java: Strategy[];
   };
 };
 
@@ -104,7 +108,7 @@ const installSteps: Array<{
   {
     key: "tools",
     title: "Runtime tools",
-    description: "uv, Rust stable, rustfmt, clippy, and the selected Node strategy.",
+    description: "uv, Rust stable, rustfmt, clippy, and selected language runtimes.",
     skipFlag: "--skip-tools"
   }
 ];
@@ -537,6 +541,9 @@ function App() {
     initialParams.get("docker") === "off" ? false : defaultDockerStrategy(initialOs) !== "none"
   );
   const [nodeStrategy, setNodeStrategy] = useState<NodeStrategyId>("mise");
+  const [pythonStrategy, setPythonStrategy] = useState<PythonStrategyId>("system-uv");
+  const [javaStrategy, setJavaStrategy] = useState<JavaStrategyId>("mise-temurin-21");
+  const [javaEnabled, setJavaEnabled] = useState(false);
   const [installTpm, setInstallTpm] = useState(false);
   const [assumeYes, setAssumeYes] = useState(true);
   const [repoRef, setRepoRef] = useState(DEFAULT_REF);
@@ -573,6 +580,9 @@ function App() {
         dockerEnabled,
         dockerStrategy,
         nodeStrategy,
+        pythonStrategy,
+        javaEnabled,
+        javaStrategy,
         repoRef
       }),
     [
@@ -582,7 +592,10 @@ function App() {
       dockerEnabled,
       dockerStrategy,
       installTpm,
+      javaEnabled,
+      javaStrategy,
       nodeStrategy,
+      pythonStrategy,
       repoRef,
       selectedPackageNames,
       stepSelection
@@ -601,6 +614,14 @@ function App() {
   );
   const nodeStrategies = useMemo(
     () => catalog.strategies.node.filter((strategy) => strategy.id !== "none"),
+    []
+  );
+  const pythonStrategies = useMemo(
+    () => catalog.strategies.python.filter((strategy) => strategy.id !== "none"),
+    []
+  );
+  const javaStrategies = useMemo(
+    () => catalog.strategies.java.filter((strategy) => strategy.id !== "none"),
     []
   );
   const selectedGroups = useMemo(
@@ -754,6 +775,46 @@ function App() {
             </section>
 
             <section className="panel">
+              <div className="panel-heading">
+                <div>
+                  <p className="section-label">Toolchains</p>
+                  <h2>Containers and language runtimes</h2>
+                </div>
+              </div>
+              <DockerStrategyControl
+                activeId={dockerStrategy}
+                enabled={dockerEnabled}
+                onChange={(value) => setDockerStrategy(value as DockerStrategyId)}
+                onEnabledChange={(enabled) => setDockerEnabled(enabled)}
+                strategies={dockerStrategies}
+              />
+              <StrategySelector
+                activeId={nodeStrategy}
+                label="Node"
+                onChange={(value) => setNodeStrategy(value as NodeStrategyId)}
+                recommendedId="mise"
+                strategies={nodeStrategies}
+              />
+              <StrategySelector
+                activeId={pythonStrategy}
+                label="Python"
+                onChange={(value) => setPythonStrategy(value as PythonStrategyId)}
+                recommendedId="system-uv"
+                strategies={pythonStrategies}
+              />
+              <OptionalStrategyControl
+                activeId={javaStrategy}
+                disabledNote="Java runtime install is disabled. Turn it on for JVM, Gradle, or Kotlin work."
+                enabled={javaEnabled}
+                label="Java"
+                onChange={(value) => setJavaStrategy(value as JavaStrategyId)}
+                onEnabledChange={setJavaEnabled}
+                recommendedId="mise-temurin-21"
+                strategies={javaStrategies}
+              />
+            </section>
+
+            <section className="panel">
               <div className="panel-heading package-heading">
                 <div>
                   <p className="section-label">Package catalog</p>
@@ -800,29 +861,6 @@ function App() {
                 />
               </label>
             </section>
-
-            <section className="panel">
-              <div className="panel-heading">
-                <div>
-                  <p className="section-label">Strategies</p>
-                  <h2>Docker and Node</h2>
-                </div>
-              </div>
-              <DockerStrategyControl
-                activeId={dockerStrategy}
-                enabled={dockerEnabled}
-                onChange={(value) => setDockerStrategy(value as DockerStrategyId)}
-                onEnabledChange={(enabled) => setDockerEnabled(enabled)}
-                strategies={dockerStrategies}
-              />
-              <StrategySelector
-                activeId={nodeStrategy}
-                label="Node"
-                onChange={(value) => setNodeStrategy(value as NodeStrategyId)}
-                recommendedId="mise"
-                strategies={nodeStrategies}
-              />
-            </section>
           </div>
 
           <CommandPanel
@@ -832,6 +870,9 @@ function App() {
             copied={copied}
             dockerEnabled={dockerEnabled}
             installTpm={installTpm}
+            javaEnabled={javaEnabled}
+            javaStrategy={javaStrategy}
+            pythonStrategy={pythonStrategy}
             repoRef={repoRef}
             selectedPackageNames={selectedPackageNames}
             setAssumeYes={setAssumeYes}
@@ -913,7 +954,10 @@ function App() {
           configContents={configContents}
           dockerEnabled={dockerEnabled}
           dockerStrategy={dockerStrategy}
+          javaEnabled={javaEnabled}
+          javaStrategy={javaStrategy}
           nodeStrategy={nodeStrategy}
+          pythonStrategy={pythonStrategy}
           selectedPackageNames={selectedPackageNames}
           stepSelection={stepSelection}
           onCopy={copyText}
@@ -1139,6 +1183,58 @@ function DockerStrategyControl({
   );
 }
 
+function OptionalStrategyControl({
+  activeId,
+  disabledNote,
+  enabled,
+  label,
+  onChange,
+  onEnabledChange,
+  recommendedId,
+  strategies
+}: {
+  activeId: string;
+  disabledNote: string;
+  enabled: boolean;
+  label: string;
+  onChange: (value: string) => void;
+  onEnabledChange: (enabled: boolean) => void;
+  recommendedId?: string;
+  strategies: Strategy[];
+}) {
+  return (
+    <div className="strategy-block">
+      <div className="strategy-heading">
+        <h3>{label}</h3>
+        <label className="toggle-row">
+          <input type="checkbox" checked={enabled} onChange={() => onEnabledChange(!enabled)} />
+          <span>{enabled ? "On" : "Off"}</span>
+        </label>
+      </div>
+      {enabled ? (
+        <div className="strategy-grid">
+          {strategies.map((strategy) => (
+            <button
+              className={activeId === strategy.id ? "strategy-card active" : "strategy-card"}
+              key={strategy.id}
+              type="button"
+              onClick={() => onChange(strategy.id)}
+            >
+              <strong>
+                {strategy.label}
+                {strategy.id === recommendedId && <small>Recommended</small>}
+              </strong>
+              <span>{strategy.description}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="muted compact-note">{disabledNote}</p>
+      )}
+    </div>
+  );
+}
+
 function ConfigBlockEditor({
   activeBlockId,
   blocks,
@@ -1168,15 +1264,39 @@ function ConfigBlockEditor({
 }) {
   const activeBlock = blocks.find((block) => block.id === activeBlockId) ?? blocks[0];
   const activeIndex = blocks.findIndex((block) => block.id === activeBlock.id);
+  const [selectedLine, setSelectedLine] = useState<{ blockId: string; lineIndex: number } | null>(null);
+  const lineStarts = new Map<string, number>();
+  let nextLineNumber = 1;
+
+  for (const block of blocks) {
+    const lineCount = block.content.trimEnd().split(/\r?\n/).length || 1;
+    lineStarts.set(block.id, nextLineNumber);
+    nextLineNumber += lineCount + 1;
+  }
+
+  const selectedLineBlock = selectedLine
+    ? blocks.find((block) => block.id === selectedLine.blockId)
+    : undefined;
+  const detailLineBlock = selectedLineBlock ?? activeBlock;
+  const detailLineIndex = selectedLineBlock && selectedLine ? selectedLine.lineIndex : 0;
+  const selectedLineText = detailLineBlock.content.trimEnd().split(/\r?\n/)[detailLineIndex] || "";
+  const selectedLineNumber = (lineStarts.get(detailLineBlock.id) ?? 1) + detailLineIndex;
 
   return (
     <div className="config-builder">
-      <div className="block-list" aria-label={`${configDefinitions[configKey].title} blocks`}>
+      <div className="config-code-pane" aria-label={`${configDefinitions[configKey].title} blocks`}>
+        <div className="code-pane-header">
+          <strong>{configDefinitions[configKey].title}</strong>
+          <span>
+            {blocks.filter((block) => block.enabled).length}/{blocks.length} blocks on
+          </span>
+        </div>
         {blocks.map((block, index) => (
           <div
             className={[
-              "config-block-card",
+              "editor-block",
               block.id === activeBlock.id ? "active" : "",
+              block.enabled ? "" : "disabled",
               draggedBlock?.blockId === block.id ? "dragging" : ""
             ]
               .filter(Boolean)
@@ -1188,41 +1308,70 @@ function ConfigBlockEditor({
             onDragStart={() => onDragStart(block.id)}
             onDrop={() => onBlockDrop(block.id)}
           >
-            <button
-              aria-label={`Move ${block.title} up`}
-              className="icon-button"
-              disabled={index === 0}
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onBlockMove(block.id, -1);
-              }}
-            >
-              Up
-            </button>
-            <button
-              aria-label={`Move ${block.title} down`}
-              className="icon-button"
-              disabled={index === blocks.length - 1}
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onBlockMove(block.id, 1);
-              }}
-            >
-              Down
-            </button>
-            <label className="block-toggle" onClick={(event) => event.stopPropagation()}>
-              <input type="checkbox" checked={block.enabled} onChange={() => onBlockToggle(block.id)} />
-              <span>{block.enabled ? "On" : "Off"}</span>
-            </label>
-            <div className="block-card-copy">
-              <strong>{block.title}</strong>
-              <span>{block.description}</span>
-              {block.shortcuts.length > 0 && <KeycapList keys={block.shortcuts} />}
-              <pre className="block-snippet">
-                <code>{block.content.trimEnd()}</code>
-              </pre>
+            <div className="editor-block-header">
+              <button
+                className="block-title-button"
+                type="button"
+                onClick={() => {
+                  setSelectedLine(null);
+                  onActiveBlockChange(block.id);
+                }}
+              >
+                <span>{block.title}</span>
+                <small>{block.description}</small>
+              </button>
+              <div className="editor-block-actions">
+                <button
+                  aria-label={`Move ${block.title} up`}
+                  className="icon-button"
+                  disabled={index === 0}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onBlockMove(block.id, -1);
+                  }}
+                >
+                  Up
+                </button>
+                <button
+                  aria-label={`Move ${block.title} down`}
+                  className="icon-button"
+                  disabled={index === blocks.length - 1}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onBlockMove(block.id, 1);
+                  }}
+                >
+                  Down
+                </button>
+                <label className="block-toggle" onClick={(event) => event.stopPropagation()}>
+                  <input type="checkbox" checked={block.enabled} onChange={() => onBlockToggle(block.id)} />
+                  <span>{block.enabled ? "On" : "Off"}</span>
+                </label>
+              </div>
+            </div>
+            <div className="editor-lines">
+              {(block.content.trimEnd().split(/\r?\n/) || [""]).map((line, lineIndex) => {
+                const lineNumber = (lineStarts.get(block.id) ?? 1) + lineIndex;
+                const lineKey = `${block.id}-${lineIndex}`;
+                const lineActive = selectedLine?.blockId === block.id && selectedLine.lineIndex === lineIndex;
+                return (
+                  <button
+                    className={lineActive ? "code-line active" : "code-line"}
+                    key={lineKey}
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setSelectedLine({ blockId: block.id, lineIndex });
+                      onActiveBlockChange(block.id);
+                    }}
+                  >
+                    <span className="line-number">{lineNumber}</span>
+                    <code className="line-text">{line || " "}</code>
+                  </button>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -1240,6 +1389,10 @@ function ConfigBlockEditor({
         </div>
         <p className="muted">{activeBlock.description}</p>
         {activeBlock.shortcuts.length > 0 && <KeycapList keys={activeBlock.shortcuts} />}
+        <div className="selected-line-detail">
+          <span>Line {selectedLineNumber}</span>
+          <code>{selectedLineText || "blank line"}</code>
+        </div>
         <textarea
           className="block-editor"
           spellCheck={false}
@@ -1287,6 +1440,9 @@ function CommandPanel({
   copied,
   dockerEnabled,
   installTpm,
+  javaEnabled,
+  javaStrategy,
+  pythonStrategy,
   repoRef,
   selectedPackageNames,
   setAssumeYes,
@@ -1300,6 +1456,9 @@ function CommandPanel({
   copied: string | null;
   dockerEnabled: boolean;
   installTpm: boolean;
+  javaEnabled: boolean;
+  javaStrategy: JavaStrategyId;
+  pythonStrategy: PythonStrategyId;
   repoRef: string;
   selectedPackageNames: string[];
   setAssumeYes: (value: boolean) => void;
@@ -1325,6 +1484,8 @@ function CommandPanel({
         <span>Install TPM</span>
       </label>
       <p className="muted compact-note">Docker install: {dockerEnabled ? "on" : "off"}</p>
+      <p className="muted compact-note">Python setup: {pythonStrategy}</p>
+      <p className="muted compact-note">Java install: {javaEnabled ? javaStrategy : "off"}</p>
       <div className="mini-summary">
         <strong>{selectedPackageNames.length}</strong>
         <span>{activeTarget.packageManager} packages selected</span>
@@ -1356,7 +1517,10 @@ function SummaryView({
   copied,
   dockerEnabled,
   dockerStrategy,
+  javaEnabled,
+  javaStrategy,
   nodeStrategy,
+  pythonStrategy,
   selectedPackageNames,
   stepSelection,
   onCopy
@@ -1367,7 +1531,10 @@ function SummaryView({
   copied: string | null;
   dockerEnabled: boolean;
   dockerStrategy: DockerStrategyId;
+  javaEnabled: boolean;
+  javaStrategy: JavaStrategyId;
   nodeStrategy: NodeStrategyId;
+  pythonStrategy: PythonStrategyId;
   selectedPackageNames: string[];
   stepSelection: Record<InstallStepKey, boolean>;
   onCopy: (key: string, value: string) => void;
@@ -1399,6 +1566,14 @@ function SummaryView({
           <div>
             <dt>Node strategy</dt>
             <dd>{nodeStrategy}</dd>
+          </div>
+          <div>
+            <dt>Python strategy</dt>
+            <dd>{pythonStrategy}</dd>
+          </div>
+          <div>
+            <dt>Java strategy</dt>
+            <dd>{javaEnabled ? javaStrategy : "off"}</dd>
           </div>
           <div>
             <dt>Selected packages</dt>
@@ -1451,6 +1626,9 @@ type BuildCommandInput = {
   dockerEnabled: boolean;
   dockerStrategy: DockerStrategyId;
   nodeStrategy: NodeStrategyId;
+  pythonStrategy: PythonStrategyId;
+  javaEnabled: boolean;
+  javaStrategy: JavaStrategyId;
   repoRef: string;
 };
 
@@ -1479,6 +1657,8 @@ function buildCommands(input: BuildCommandInput) {
 
   if (input.stepSelection.tools) {
     flags.push("--node-strategy", input.nodeStrategy);
+    flags.push("--python-strategy", input.pythonStrategy);
+    flags.push("--java-strategy", input.javaEnabled ? input.javaStrategy : "none");
   }
 
   if (input.installTpm) {
@@ -1496,7 +1676,9 @@ function buildCommands(input: BuildCommandInput) {
       input.activeOs,
       input.selectedPackageNames,
       input.dockerEnabled ? input.dockerStrategy : "none",
-      input.nodeStrategy
+      input.nodeStrategy,
+      input.pythonStrategy,
+      input.javaEnabled ? input.javaStrategy : "none"
     )
   };
 }
@@ -1505,7 +1687,9 @@ function buildPackageCommand(
   osId: OsId,
   packages: string[],
   dockerStrategy: DockerStrategyId,
-  nodeStrategy: NodeStrategyId
+  nodeStrategy: NodeStrategyId,
+  pythonStrategy: PythonStrategyId,
+  javaStrategy: JavaStrategyId
 ) {
   const installLine =
     osId === "macos"
@@ -1517,8 +1701,10 @@ function buildPackageCommand(
         : "# No dnf packages selected";
   const dockerLine = dockerPreviewLine(osId, dockerStrategy);
   const nodeLine = nodePreviewLine(nodeStrategy);
+  const pythonLine = pythonPreviewLine(pythonStrategy);
+  const javaLine = javaPreviewLine(osId, javaStrategy);
 
-  return [installLine, dockerLine, nodeLine].filter(Boolean).join("\n");
+  return [installLine, dockerLine, nodeLine, pythonLine, javaLine].filter(Boolean).join("\n");
 }
 
 function dockerPreviewLine(osId: OsId, strategy: DockerStrategyId) {
@@ -1547,6 +1733,29 @@ function nodePreviewLine(strategy: NodeStrategyId) {
     return "curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash";
   }
   return "curl -fsSL https://mise.run | sh && mise use -g node@lts";
+}
+
+function pythonPreviewLine(strategy: PythonStrategyId) {
+  if (strategy === "none") {
+    return "# Extra Python runtime setup skipped";
+  }
+  if (strategy === "mise") {
+    return "curl -fsSL https://mise.run | sh && mise use -g python@latest";
+  }
+  return "curl -LsSf https://astral.sh/uv/install.sh | sh";
+}
+
+function javaPreviewLine(osId: OsId, strategy: JavaStrategyId) {
+  if (strategy === "none") {
+    return "# Java setup skipped";
+  }
+  if (strategy === "mise-temurin-21") {
+    return "curl -fsSL https://mise.run | sh && mise use -g java@temurin-21";
+  }
+  if (osId === "macos") {
+    return "brew install openjdk@21";
+  }
+  return osId === "ubuntu" ? "sudo apt install -y openjdk-21-jdk" : "sudo dnf install -y java-21-openjdk-devel";
 }
 
 function buildConfigWriteCommand(

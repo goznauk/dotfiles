@@ -18,6 +18,8 @@ OPTIONAL_PACKAGE_CSV=""
 EXTRA_PACKAGE_CSV=""
 DOCKER_STRATEGY="official"
 NODE_STRATEGY="mise"
+PYTHON_STRATEGY="system-uv"
+JAVA_STRATEGY="none"
 
 usage() {
   cat <<'USAGE'
@@ -29,7 +31,7 @@ Options:
   --skip-apt       Skip apt packages
   --skip-dotfiles  Skip dotfile links
   --skip-shell     Skip zsh and oh-my-zsh setup
-  --skip-tools     Skip uv, rustup, and mise runtime setup
+  --skip-tools     Skip uv, rustup, and language runtime setup
   --with-tpm       Install tmux plugin manager
   --apt-packages LIST
                   Install exactly these apt packages, comma separated
@@ -43,6 +45,10 @@ Options:
                   official, distro, podman, or none
   --node-strategy VALUE
                   mise, nvm, or none
+  --python-strategy VALUE
+                  system-uv, mise, or none
+  --java-strategy VALUE
+                  mise-temurin-21, distro-openjdk-21, or none
   -h, --help       Show this help
 
 Examples:
@@ -125,6 +131,28 @@ while [[ "$#" -gt 0 ]]; do
         mise|nvm|none) ;;
         *)
           printf 'Invalid --node-strategy: %s\n' "$NODE_STRATEGY" >&2
+          exit 1
+          ;;
+      esac
+      shift 2
+      ;;
+    --python-strategy)
+      PYTHON_STRATEGY="${2:-}"
+      case "$PYTHON_STRATEGY" in
+        system-uv|mise|none) ;;
+        *)
+          printf 'Invalid --python-strategy: %s\n' "$PYTHON_STRATEGY" >&2
+          exit 1
+          ;;
+      esac
+      shift 2
+      ;;
+    --java-strategy)
+      JAVA_STRATEGY="${2:-}"
+      case "$JAVA_STRATEGY" in
+        mise-temurin-21|distro-openjdk-21|none) ;;
+        *)
+          printf 'Invalid --java-strategy: %s\n' "$JAVA_STRATEGY" >&2
           exit 1
           ;;
       esac
@@ -509,21 +537,39 @@ install_rust() {
   fi
 }
 
-install_mise_and_node() {
-  log 'Installing mise and Node LTS'
+install_mise() {
+  log 'Installing mise'
   local mise_bin="$HOME/.local/bin/mise"
 
   if ! command -v mise >/dev/null 2>&1 && [[ ! -x "$mise_bin" ]]; then
     curl -fsSL https://mise.run | sh
   fi
 
-  if command -v mise >/dev/null 2>&1; then
-    mise use -g node@lts
-  elif [[ -x "$mise_bin" ]]; then
-    "$mise_bin" use -g node@lts
-  else
-    warn 'mise was not found after install; Node LTS setup skipped.'
+  export PATH="$HOME/.local/bin:$PATH"
+  if command -v mise >/dev/null 2>&1 || [[ -x "$mise_bin" ]]; then
+    return 0
   fi
+
+  warn 'mise was not found after install.'
+  return 1
+}
+
+mise_use_global() {
+  install_mise || return 1
+  local mise_bin="$HOME/.local/bin/mise"
+
+  if command -v mise >/dev/null 2>&1; then
+    mise use -g "$@"
+  elif [[ -x "$mise_bin" ]]; then
+    "$mise_bin" use -g "$@"
+  else
+    return 1
+  fi
+}
+
+install_mise_and_node() {
+  log 'Installing Node LTS through mise'
+  mise_use_global node@lts || warn 'Node LTS setup through mise skipped.'
 }
 
 install_nvm_and_node() {
@@ -543,9 +589,41 @@ install_nvm_and_node() {
   fi
 }
 
+install_python_runtime() {
+  case "$PYTHON_STRATEGY" in
+    system-uv)
+      log 'Using system Python packages with uv'
+      ;;
+    mise)
+      log 'Installing Python through mise'
+      mise_use_global python@latest || warn 'Python setup through mise skipped.'
+      ;;
+    none)
+      log 'Skipping extra Python runtime setup'
+      ;;
+  esac
+}
+
+install_java_runtime() {
+  case "$JAVA_STRATEGY" in
+    mise-temurin-21)
+      log 'Installing Temurin 21 through mise'
+      mise_use_global java@temurin-21 || warn 'Java setup through mise skipped.'
+      ;;
+    distro-openjdk-21)
+      log 'Installing OpenJDK 21 from Ubuntu packages'
+      sudo apt install -y openjdk-21-jdk
+      ;;
+    none)
+      log 'Skipping Java runtime setup'
+      ;;
+  esac
+}
+
 install_tools() {
   install_uv
   install_rust
+  install_python_runtime
   case "$NODE_STRATEGY" in
     mise)
       install_mise_and_node
@@ -557,6 +635,7 @@ install_tools() {
       log 'Skipping Node runtime setup'
       ;;
   esac
+  install_java_runtime
 }
 
 main() {
@@ -576,7 +655,7 @@ main() {
     install_tpm
   fi
 
-  if [[ "$SKIP_TOOLS" -eq 0 ]] && confirm 'Install uv, Rust, mise, and Node LTS?'; then
+  if [[ "$SKIP_TOOLS" -eq 0 ]] && confirm 'Install uv, Rust, and selected language runtimes?'; then
     install_tools
   fi
 
