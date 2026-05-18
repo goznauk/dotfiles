@@ -17,5 +17,10 @@
 	excludesfile = ~/.gitexclude
 [diff]
 	tool = vimdiff
+	algorithm = histogram
+[merge]
+	conflictStyle = zdiff3
+[rerere]
+	enabled = true
 [include]
 	path = ~/.gitconfig.local

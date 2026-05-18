@@ -1,6 +1,7 @@
 set nocompatible
 filetype plugin indent on
 syntax enable
+let mapleader = " "
 
 set encoding=utf-8
 set fileencoding=utf-8
@@ -11,9 +12,13 @@ set noerrorbells
 set autoread
 set hidden
 set swapfile
+set directory=~/.vim/swap//
 set undofile
-silent! call mkdir(expand('~/.vim/undo'), 'p')
 set undodir=~/.vim/undo//
+set backupdir=~/.vim/backup//
+silent! call mkdir(expand('~/.vim/swap'), 'p')
+silent! call mkdir(expand('~/.vim/undo'), 'p')
+silent! call mkdir(expand('~/.vim/backup'), 'p')
 
 set autoindent
 set smartindent
@@ -40,17 +45,14 @@ set number
 set showcmd
 set title
 set mouse=a
+set splitright
+set splitbelow
 
 if has('termguicolors')
   set termguicolors
 endif
 
 let s:plug_path = expand('~/.vim/autoload/plug.vim')
-if empty(glob(s:plug_path)) && executable('curl') && empty($DOTFILES_SKIP_NETWORK)
-  silent execute '!curl -fLo ' . shellescape(s:plug_path) . ' --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
-  autocmd VimEnter * PlugInstall --sync | source $MYVIMRC
-endif
-
 if !empty(glob(s:plug_path))
   call plug#begin('~/.vim/plugged')
   Plug 'tpope/vim-sensible'
@@ -58,7 +60,10 @@ if !empty(glob(s:plug_path))
   call plug#end()
 endif
 
-autocmd FileType html setlocal tabstop=2 shiftwidth=2 softtabstop=2 expandtab
-autocmd FileType ruby setlocal tabstop=2 shiftwidth=2 softtabstop=2 expandtab
-autocmd FileType python setlocal tabstop=4 shiftwidth=4 softtabstop=4 expandtab
-autocmd FileType javascript,typescript,json,yaml setlocal tabstop=2 shiftwidth=2 softtabstop=2 expandtab
+augroup dotfiles_filetypes
+  autocmd!
+  autocmd FileType html setlocal tabstop=2 shiftwidth=2 softtabstop=2 expandtab
+  autocmd FileType ruby setlocal tabstop=2 shiftwidth=2 softtabstop=2 expandtab
+  autocmd FileType python setlocal tabstop=4 shiftwidth=4 softtabstop=4 expandtab
+  autocmd FileType javascript,typescript,json,yaml setlocal tabstop=2 shiftwidth=2 softtabstop=2 expandtab
+augroup END
