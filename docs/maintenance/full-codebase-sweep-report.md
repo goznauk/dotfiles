@@ -315,3 +315,42 @@ skip warning.
 
 - Add direct tests for `commandBuilder.ts`.
 - Continue splitting catalog selection helpers from `main.tsx`.
+
+## Iteration 6
+
+### Files and areas inspected
+
+`chooser/src/commandBuilder.ts`, command output behavior, chooser npm scripts,
+TypeScript test compilation, `.gitignore`, and chooser README.
+
+### Main findings
+
+- The extracted command builder contains critical shell quoting and flag logic
+  that should be covered without launching the React app.
+- Adding a full test framework would be unnecessary for this repository right
+  now; TypeScript plus a small Node test is enough for the command boundary.
+
+### Improvements implemented
+
+- Added `chooser/src/commandBuilder.test.ts`.
+- Added `chooser/tsconfig.test.json` to compile command tests to `.tmp`.
+- Added `npm run test:commands` and included it in `npm run check`.
+- Ignored `.tmp/` and documented the command-builder test coverage.
+
+### Tests and checks run
+
+- `npm run test:commands`
+- `npm run build`
+- `./scripts/check.sh`
+
+The root check passed with the known Vite Node version warning and tmux sandbox
+skip warning.
+
+### Commits created
+
+- Pending commit for command-builder tests.
+
+### Deferred items
+
+- Add UI smoke coverage only if a lightweight browser test path becomes stable
+  enough for this repo.

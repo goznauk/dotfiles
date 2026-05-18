@@ -39,6 +39,9 @@ npm run build
 npm run check
 ```
 
+The check command validates the package catalog, runs focused command-builder
+tests, then builds the production app.
+
 Useful screenshot URLs:
 
 ```text

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": false,
+    "outDir": "../.tmp/command-tests",
+    "rootDir": "src",
+    "types": []
+  },
+  "include": ["src/commandBuilder.ts", "src/commandBuilder.test.ts"]
+}

@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",
     "build": "tsc && vite build",
-    "check": "node ../scripts/validate-catalog.mjs && npm run build",
-    "preview": "vite preview --host 127.0.0.1 --port 4173"
+    "check": "node ../scripts/validate-catalog.mjs && npm run test:commands && npm run build",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "test:commands": "tsc -p tsconfig.test.json && node ../.tmp/command-tests/commandBuilder.test.js"
   },
   "dependencies": {
     "react": "^19.2.3",
