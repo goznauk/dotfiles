@@ -1084,6 +1084,9 @@ function TargetSelector({
   onVersionChange: (version: string) => void;
 }) {
   const [isChanging, setIsChanging] = useState(false);
+  const versionNote =
+    (activeTarget.versions.find((version) => version.value === targetVersion) ?? activeTarget.versions[0])
+      ?.note ?? "Custom version";
 
   if (!targetSelected) {
     return (
@@ -1117,23 +1120,22 @@ function TargetSelector({
 
   return (
     <>
-      <section className="target-bar" aria-label="Operating system">
-        <div>
-          <p className="section-label">Target OS</p>
-          <button className="target-pill active" type="button" onClick={() => setIsChanging(true)}>
-            <strong>{targetShortLabel(activeTarget)}</strong>
-            <span>
-              {activeTarget.packageManager}
-              {!activeTarget.implemented ? " preview" : ""}
-            </span>
-          </button>
-        </div>
-        <label className="version-field">
+      <section className="target-bar target-selected-row" aria-label="Operating system">
+        <p className="section-label">Target OS</p>
+        <button className="target-pill active" type="button" onClick={() => setIsChanging(true)}>
+          <strong>{targetShortLabel(activeTarget)}</strong>
+          <span>
+            {activeTarget.packageManager}
+            {!activeTarget.implemented ? " preview" : ""}
+          </span>
+        </button>
+        <label className="version-field target-version-field" title={versionNote}>
           <span>Version</span>
           <input
             list={`versions-${activeTarget.id}`}
             value={targetVersion}
             onChange={(event) => onVersionChange(event.target.value)}
+            aria-label={`${targetShortLabel(activeTarget)} version`}
             spellCheck={false}
           />
           <datalist id={`versions-${activeTarget.id}`}>
@@ -1143,10 +1145,6 @@ function TargetSelector({
               </option>
             ))}
           </datalist>
-          <small>
-            {(activeTarget.versions.find((version) => version.value === targetVersion) ?? activeTarget.versions[0])
-              ?.note ?? "Custom version"}
-          </small>
         </label>
         <button className="target-change-button" type="button" onClick={() => setIsChanging(true)}>
           Change target
