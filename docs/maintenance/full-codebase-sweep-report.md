@@ -435,3 +435,45 @@ skip warning.
 ### Deferred items
 
 - Add CI workflow only when this branch is ready to publish automation.
+
+## Iteration 9
+
+### Files and areas inspected
+
+`Ubuntu/setup-ubuntu.sh`, Ubuntu package resolution flow, script help text,
+Ubuntu README examples, and root validation.
+
+### Main findings
+
+- Package resolution existed only inside the apt install function, which made
+  previewing installer choices harder.
+- The Ubuntu setup script had no safe built-in way to inspect resolved package
+  choices before making system changes.
+
+### Improvements implemented
+
+- Extracted shared `resolve_apt_packages`.
+- Added `--dry-run` to print selected steps, toolchain strategies, target
+  version, TPM choice, and resolved apt packages without touching the system.
+- Added an explicit Bash 4+ guard for the Ubuntu installer.
+- Documented the dry-run command.
+
+### Tests and checks run
+
+- `bash Ubuntu/setup-ubuntu.sh --dry-run --target-version 26.04`
+- `bash -n Ubuntu/setup-ubuntu.sh`
+- `./scripts/check.sh`
+
+The dry-run command reached the new Bash version guard on this macOS host,
+which uses Bash 3.2. The script targets Ubuntu, where Bash 4+ is available by
+default. The root check passed with the known Vite Node version warning and
+tmux sandbox skip warning.
+
+### Commits created
+
+- Pending commit for Ubuntu dry-run support.
+
+### Deferred items
+
+- The chooser does not expose `--dry-run` as a UI option because its command
+  panel is already a preview surface.

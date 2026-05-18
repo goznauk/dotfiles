@@ -3,6 +3,9 @@
 This setup targets a development machine with shell tools, build tools, Python,
 Rust, Node, Vim, tmux, Docker, and common inspection commands.
 
+The script requires Bash 4 or newer. Ubuntu ships a supported Bash version by
+default.
+
 Ubuntu 25.04 reached end of life on 2026-01-15. The script still supports it,
 but use Ubuntu 24.04 LTS or 26.04 LTS when possible.
 
@@ -25,6 +28,7 @@ Useful variants:
 ```sh
 ./setup.sh ubuntu --yes --skip-apt
 ./setup.sh ubuntu --yes --skip-tools
+./setup.sh ubuntu --dry-run --target-version 26.04
 ./setup.sh ubuntu --yes --with-tpm
 ./setup.sh ubuntu --yes --apt-packages git,zsh,vim,tmux
 ./setup.sh ubuntu --yes --optional-packages bat,eza,btop

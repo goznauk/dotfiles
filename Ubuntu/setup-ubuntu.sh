@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if (( BASH_VERSINFO[0] < 4 )); then
+  printf 'Ubuntu setup requires Bash 4 or newer. Ubuntu ships a supported Bash version by default.\n' >&2
+  exit 2
+fi
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_DIR="$ROOT_DIR/common"
 PACKAGE_DIR="$ROOT_DIR/Ubuntu/packages"
@@ -11,6 +16,7 @@ SKIP_DOTFILES=0
 SKIP_SHELL=0
 SKIP_TOOLS=0
 WITH_TPM=0
+DRY_RUN=0
 APT_PACKAGE_MODE="default"
 APT_PACKAGE_CSV=""
 OPTIONAL_PACKAGE_MODE="all"
@@ -34,6 +40,7 @@ Options:
   --skip-shell     Skip zsh and oh-my-zsh setup
   --skip-tools     Skip uv, rustup, and language runtime setup
   --with-tpm       Install tmux plugin manager
+  --dry-run        Print resolved choices and exit without changing the system
   --target-version VALUE
                   Expected Ubuntu VERSION_ID, for example 26.04
   --apt-packages LIST
@@ -85,6 +92,10 @@ while [[ "$#" -gt 0 ]]; do
       ;;
     --with-tpm)
       WITH_TPM=1
+      shift
+      ;;
+    --dry-run)
+      DRY_RUN=1
       shift
       ;;
     --target-version)
@@ -321,6 +332,29 @@ append_csv_packages() {
   done
 }
 
+resolve_apt_packages() {
+  local -n packages_ref="$1"
+  local core_packages=()
+  local optional_packages=()
+
+  packages_ref=()
+
+  case "$APT_PACKAGE_MODE" in
+    default)
+      load_package_file "$PACKAGE_DIR/core.txt" core_packages
+      load_package_file "$PACKAGE_DIR/optional.txt" optional_packages || warn 'No optional apt package file loaded.'
+      filter_optional_packages optional_packages
+      packages_ref=("${core_packages[@]}" "${optional_packages[@]}")
+      ;;
+    selected)
+      append_csv_packages "$APT_PACKAGE_CSV" packages_ref
+      ;;
+  esac
+
+  append_csv_packages "$EXTRA_PACKAGE_CSV" packages_ref
+  dedupe_packages packages_ref
+}
+
 dedupe_packages() {
   local -n packages_ref="$1"
   local seen=" "
@@ -365,24 +399,9 @@ detect_ubuntu() {
 }
 
 install_apt_packages() {
-  local core_packages=()
-  local optional_packages=()
   local packages=()
 
-  case "$APT_PACKAGE_MODE" in
-    default)
-      load_package_file "$PACKAGE_DIR/core.txt" core_packages
-      load_package_file "$PACKAGE_DIR/optional.txt" optional_packages || warn 'No optional apt package file loaded.'
-      filter_optional_packages optional_packages
-      packages=("${core_packages[@]}" "${optional_packages[@]}")
-      ;;
-    selected)
-      append_csv_packages "$APT_PACKAGE_CSV" packages
-      ;;
-  esac
-
-  append_csv_packages "$EXTRA_PACKAGE_CSV" packages
-  dedupe_packages packages
+  resolve_apt_packages packages
 
   log 'Updating apt packages'
   sudo apt update
@@ -654,7 +673,36 @@ install_tools() {
   install_java_runtime
 }
 
+print_plan() {
+  local packages=()
+
+  if [[ "$SKIP_APT" -eq 0 ]]; then
+    resolve_apt_packages packages
+  fi
+
+  log 'Dry run'
+  printf 'Target version: %s\n' "${TARGET_VERSION:-not set}"
+  printf 'Apt step: %s\n' "$([[ "$SKIP_APT" -eq 0 ]] && printf enabled || printf skipped)"
+  printf 'Shell step: %s\n' "$([[ "$SKIP_SHELL" -eq 0 ]] && printf enabled || printf skipped)"
+  printf 'Dotfile step: %s\n' "$([[ "$SKIP_DOTFILES" -eq 0 ]] && printf enabled || printf skipped)"
+  printf 'Tools step: %s\n' "$([[ "$SKIP_TOOLS" -eq 0 ]] && printf enabled || printf skipped)"
+  printf 'Docker strategy: %s\n' "$DOCKER_STRATEGY"
+  printf 'Node strategy: %s\n' "$NODE_STRATEGY"
+  printf 'Python strategy: %s\n' "$PYTHON_STRATEGY"
+  printf 'Java strategy: %s\n' "$JAVA_STRATEGY"
+  printf 'Install TPM: %s\n' "$([[ "$WITH_TPM" -eq 1 ]] && printf yes || printf no)"
+  printf 'Apt packages: %s\n' "${#packages[@]}"
+  if [[ "${#packages[@]}" -gt 0 ]]; then
+    printf '%s\n' "${packages[@]}"
+  fi
+}
+
 main() {
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    print_plan
+    exit 0
+  fi
+
   detect_ubuntu
 
   if [[ "$SKIP_APT" -eq 0 ]] && confirm 'Install apt packages?'; then
