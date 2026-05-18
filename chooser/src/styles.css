@@ -248,7 +248,7 @@ h3 {
 .view-tabs {
   align-items: center;
   flex-wrap: nowrap;
-  gap: 22px;
+  gap: 20px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -265,10 +265,10 @@ h3 {
   border: 0;
   background: transparent;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 750;
   line-height: 1;
-  padding: 0.82rem 0.02rem 0.88rem;
+  padding: 0.64rem 0.02rem 0.7rem;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -291,7 +291,7 @@ h3 {
   position: sticky;
   z-index: 15;
   top: 0;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   background: var(--app-bg);
@@ -554,16 +554,16 @@ h3 {
 
 .page-sections {
   display: grid;
-  gap: 28px;
+  gap: 22px;
 }
 
 .scroll-section {
-  scroll-margin-top: 82px;
+  scroll-margin-top: 58px;
 }
 
 .content-stack {
   display: grid;
-  gap: 24px;
+  gap: 20px;
   min-width: 0;
 }
 
@@ -572,7 +572,7 @@ h3 {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
-  padding: 21px;
+  padding: 18px;
 }
 
 .panel-heading {
@@ -581,13 +581,13 @@ h3 {
   justify-content: space-between;
   gap: 16px;
   border-bottom: 1px solid var(--divider);
-  margin-bottom: 18px;
-  padding-bottom: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
 }
 
 .sticky-panel {
   position: sticky;
-  top: 72px;
+  top: 56px;
 }
 
 .step-grid {
@@ -853,11 +853,19 @@ input[type="checkbox"] {
 }
 
 .config-preferences {
-  margin: 0 0 16px;
+  margin: 0 0 14px;
 }
 
 .config-preferences .preference-card {
   max-width: 520px;
+}
+
+.config-tabs {
+  margin-bottom: 10px;
+}
+
+.config-tabs button {
+  padding: 0.5rem 0.72rem;
 }
 
 .preference-card,
