@@ -354,3 +354,46 @@ skip warning.
 
 - Add UI smoke coverage only if a lightweight browser test path becomes stable
   enough for this repo.
+
+## Iteration 7
+
+### Files and areas inspected
+
+`chooser/src/main.tsx`, `chooser/src/styles.css`, summary view, command copy
+buttons, browser DOM output, and responsive screenshot output.
+
+### Main findings
+
+- Clipboard writes can fail in browser contexts, but the UI previously had no
+  visible fallback or status.
+- Copy buttons all had the same visible text, so assistive technologies could
+  not distinguish which command would be copied.
+- The summary package panel rendered an empty block if every package was
+  disabled.
+
+### Improvements implemented
+
+- Added copy failure handling with a visible `role="status"` message.
+- Added descriptive `aria-label` text to command copy buttons.
+- Added an explicit empty package message in the summary view.
+- Added styling for copy failure status.
+
+### Tests and checks run
+
+- `npm run build`
+- Browser DOM check for summary view, copy labels, and console errors
+- Headless Chrome screenshot:
+  `/private/tmp/dotfiles-chooser/summary-ux-iteration7.png`
+- `./scripts/check.sh`
+
+The root check passed with the known Vite Node version warning and tmux sandbox
+skip warning.
+
+### Commits created
+
+- Pending commit for chooser UX hardening.
+
+### Deferred items
+
+- Browser screenshot through the in-app browser runtime still times out in this
+  environment, so visual capture uses headless Chrome as the fallback.

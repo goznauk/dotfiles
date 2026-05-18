@@ -549,6 +549,7 @@ function App() {
   const [assumeYes, setAssumeYes] = useState(true);
   const [repoRef, setRepoRef] = useState(DEFAULT_REF);
   const [copied, setCopied] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState<string | null>(null);
   const [activeConfig, setActiveConfig] = useState<ConfigKey>(readInitialConfig);
   const [configBlocks, setConfigBlocks] = useState<Record<ConfigKey, ConfigBlock[]>>(createInitialConfigBlocks);
   const [activeConfigBlockIds, setActiveConfigBlockIds] =
@@ -671,9 +672,16 @@ function App() {
   };
 
   const copyText = async (key: string, value: string) => {
-    await navigator.clipboard.writeText(value);
-    setCopied(key);
-    window.setTimeout(() => setCopied(null), 1400);
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(key);
+      setCopyError(null);
+      window.setTimeout(() => setCopied(null), 1400);
+    } catch {
+      setCopied(null);
+      setCopyError("Copy failed. Select the command text and copy it manually.");
+      window.setTimeout(() => setCopyError(null), 5000);
+    }
   };
 
   const configCommand = buildConfigWriteCommand(configDefinitions[activeConfig], configContents[activeConfig]);
@@ -753,6 +761,11 @@ function App() {
           setTargetVersions((current) => ({ ...current, [activeOs]: version }))
         }
       />
+      {copyError && (
+        <p className="copy-status" role="status">
+          {copyError}
+        </p>
+      )}
 
       {activeView === "install" && (
         <section className="main-grid">
@@ -1635,11 +1648,15 @@ function SummaryView({
       <section className="panel">
         <p className="section-label">Packages</p>
         <h2>Resolved names</h2>
-        <div className="selected-package-list">
-          {selectedPackageNames.map((name) => (
-            <span key={name}>{name}</span>
-          ))}
-        </div>
+        {selectedPackageNames.length > 0 ? (
+          <div className="selected-package-list">
+            {selectedPackageNames.map((name) => (
+              <span key={name}>{name}</span>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">No package-manager packages selected.</p>
+        )}
       </section>
       <section className="panel">
         <p className="section-label">Configs</p>
@@ -1679,7 +1696,7 @@ function CommandBlock({ title, command, copied, onCopy }: CommandBlockProps) {
     <div className="command-block">
       <div className="command-header">
         <h3>{title}</h3>
-        <button type="button" onClick={onCopy}>
+        <button type="button" aria-label={`Copy ${title}`} onClick={onCopy}>
           {copied ? "Copied" : "Copy"}
         </button>
       </div>

@@ -132,6 +132,18 @@ h3 {
   padding: 14px 18px;
 }
 
+.copy-status {
+  max-width: 1240px;
+  margin: 10px auto 0;
+  border: 1px solid #d7a644;
+  border-radius: 6px;
+  background: #fff7df;
+  color: #5c4308;
+  font-size: 0.88rem;
+  font-weight: 750;
+  padding: 10px 12px;
+}
+
 .version-field {
   min-width: 180px;
   display: grid;
