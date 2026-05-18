@@ -1120,6 +1120,46 @@ pre {
   overflow-wrap: anywhere;
 }
 
+.block-title-button .block-kind-pill {
+  display: inline-flex;
+  margin-top: 0.42rem;
+}
+
+.block-kind-pill,
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  padding: 0.14rem 0.52rem;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.block-kind-pill.kind-locked {
+  border-color: var(--warning-border-soft);
+  background: var(--warning-bg-soft);
+  color: var(--warning-text);
+}
+
+.block-kind-pill.kind-ordered {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.block-kind-pill.kind-side-effect {
+  border-color: var(--code-control-border);
+  background: var(--code-control-bg);
+  color: var(--code-control-text);
+}
+
+.block-kind-pill.kind-free {
+  color: var(--text-soft);
+}
+
 .editor-block-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1253,6 +1293,20 @@ kbd {
   padding: 0.2rem 0.5rem;
   font-size: 0.76rem;
   font-weight: 850;
+}
+
+.block-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.block-meta-row .meta-chip {
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-soft);
+  font-weight: 750;
 }
 
 .order-warning,

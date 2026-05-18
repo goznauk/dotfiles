@@ -22,6 +22,7 @@ type NodeStrategyId = "mise" | "nvm" | "none";
 type PythonStrategyId = "system-uv" | "mise" | "none";
 type JavaStrategyId = "mise-temurin-21" | "distro-openjdk-21" | "none";
 type ConfigKey = "zshrc" | "vimrc" | "tmux" | "htop";
+type ConfigBlockKind = "locked" | "ordered" | "side-effect" | "free";
 type DraggedBlock = { configKey: ConfigKey; blockId: string } | null;
 
 type OsVersion = {
@@ -68,15 +69,17 @@ type ConfigBlock = {
   id: string;
   title: string;
   description: string;
+  kind: ConfigBlockKind;
   shortcuts: string[];
   risk?: string;
   enabled: boolean;
   content: string;
 };
 
-type ConfigBlockTemplate = Omit<ConfigBlock, "enabled" | "content"> & {
+type ConfigBlockTemplate = Omit<ConfigBlock, "enabled" | "content" | "kind"> & {
   start: number;
   end: number;
+  kind?: ConfigBlockKind;
   enabled?: boolean;
 };
 
@@ -137,11 +140,26 @@ const createConfigBlocks = (raw: string, templates: ConfigBlockTemplate[]): Conf
     id: template.id,
     title: template.title,
     description: template.description,
+    kind: template.kind ?? "free",
     shortcuts: template.shortcuts,
     risk: template.risk,
     enabled: template.enabled ?? true,
     content: `${lines.slice(template.start - 1, template.end).join("\n")}\n`
   }));
+};
+
+const blockKindLabels: Record<ConfigBlockKind, string> = {
+  locked: "Locked order",
+  ordered: "Order matters",
+  "side-effect": "Side effect",
+  free: "Safe to move"
+};
+
+const blockKindDescriptions: Record<ConfigBlockKind, string> = {
+  locked: "Keep this block in place unless you are deliberately changing startup order.",
+  ordered: "This block can be edited, but it depends on nearby setup happening first.",
+  "side-effect": "This block can run external tools, create files, or load plugin managers.",
+  free: "This block is mostly aliases, display settings, or local preferences."
 };
 
 const configDefinitions: Record<
@@ -153,120 +171,146 @@ const configDefinitions: Record<
     path: "$HOME/.zshrc",
     blocks: createConfigBlocks(zshConfigRaw, [
       {
-        id: "prompt",
-        title: "Prompt bootstrap",
-        description: "Loads the Powerlevel10k instant prompt before the rest of the shell starts.",
-        risk: "Keep this near the top. Moving it below other shell output can break instant prompt startup.",
+        id: "interactive-guard",
+        title: "Interactive guard",
+        description: "Stops non-interactive shells from loading prompt and alias setup, then loads the pre-hook.",
+        kind: "locked",
+        risk: "Keep this first. Moving it can make scripts inherit interactive shell behavior.",
         shortcuts: [],
         start: 1,
-        end: 13
+        end: 3
+      },
+      {
+        id: "prompt",
+        title: "Prompt bootstrap",
+        description: "Loads the Powerlevel10k instant prompt and selects the prompt theme.",
+        kind: "locked",
+        risk: "Keep this near the top. Moving it below other shell output can break instant prompt startup.",
+        shortcuts: [],
+        start: 5,
+        end: 16
       },
       {
         id: "history",
         title: "History settings",
         description: "Keeps a large shared history and avoids repeated duplicate commands.",
+        kind: "free",
         shortcuts: [],
-        start: 15,
-        end: 19
-      },
-      {
-        id: "plugins",
-        title: "oh-my-zsh plugins",
-        description: "Enables Git helpers, Docker helpers, dotenv loading, completions, and suggestions.",
-        risk: "Keep this before oh-my-zsh loads. Plugins listed after the framework block will not load.",
-        shortcuts: [],
-        start: 21,
-        end: 24
+        start: 18,
+        end: 28
       },
       {
         id: "path",
         title: "PATH order",
         description: "Puts local user tools, Cargo tools, and home bin ahead of system paths.",
+        kind: "ordered",
+        risk: "Keep this before plugin and runtime setup so command checks resolve the expected tools.",
         shortcuts: [],
-        start: 26,
-        end: 37
+        start: 30,
+        end: 41
+      },
+      {
+        id: "plugins",
+        title: "oh-my-zsh plugins",
+        description: "Enables Git helpers, dotenv loading, completions, suggestions, and Docker helpers when Docker exists.",
+        kind: "ordered",
+        risk: "Keep this before oh-my-zsh loads. Plugins listed after the framework block will not load.",
+        shortcuts: [],
+        start: 43,
+        end: 51
       },
       {
         id: "framework",
         title: "Shell framework",
         description: "Loads oh-my-zsh when available and falls back to plain completion setup.",
+        kind: "locked",
         risk: "Runtime hooks, aliases, and plugin arrays assume this framework block stays before them.",
         shortcuts: [],
-        start: 39,
-        end: 44
+        start: 53,
+        end: 61
       },
       {
         id: "runtime-hooks",
         title: "Runtime hooks",
         description: "Activates mise and direnv in interactive shells when those tools exist.",
+        kind: "side-effect",
         risk: "Keep this after PATH setup so mise and direnv are discovered from the expected locations.",
         shortcuts: [],
-        start: 46,
-        end: 52
+        start: 63,
+        end: 69
       },
       {
         id: "environment",
         title: "Environment",
-        description: "Sets locale, editor, visual editor, and GPG tty defaults.",
+        description: "Sets locale, editor, visual editor, and GPG tty defaults without overriding existing values.",
+        kind: "free",
         shortcuts: [],
-        start: 54,
-        end: 58
+        start: 71,
+        end: 77
       },
       {
         id: "history-search",
         title: "History search keys",
         description: "Makes Up and Down search matching command history from the current prefix.",
+        kind: "free",
         shortcuts: ["Up", "Down"],
-        start: 60,
-        end: 64
+        start: 79,
+        end: 83
       },
       {
         id: "safe-aliases",
         title: "Prompted aliases",
         description: "Keeps raw rm, cp, and mv untouched, and adds explicit prompted variants.",
+        kind: "free",
         shortcuts: ["rmi", "rmri", "cpi", "mvi"],
-        start: 66,
-        end: 71
+        start: 85,
+        end: 90
       },
       {
         id: "navigation",
         title: "Navigation and listings",
         description: "Adds short directory and listing aliases used during terminal work.",
+        kind: "free",
         shortcuts: ["cd..", "l", "ll", "la"],
-        start: 73,
-        end: 78
+        start: 92,
+        end: 97
       },
       {
         id: "tmux-docker",
         title: "tmux and Docker aliases",
         description: "Adds the session attach flow and common Docker Compose shortcuts.",
+        kind: "free",
         shortcuts: ["ta 0", "ta0", "tls", "tn"],
-        start: 80,
-        end: 86
+        start: 99,
+        end: 105
       },
       {
         id: "editors",
         title: "Edit helpers",
         description: "Adds quick commands for editing and applying the shell configuration.",
+        kind: "free",
         shortcuts: ["zshrc", "zshrc_apply"],
-        start: 88,
-        end: 89
+        start: 107,
+        end: 108
       },
       {
         id: "inspection",
         title: "Inspection helpers",
         description: "Adds compact helpers for listening ports, IP addresses, and PATH entries.",
+        kind: "free",
         shortcuts: ["ports", "ipb", "pathls"],
-        start: 91,
-        end: 101
+        start: 110,
+        end: 124
       },
       {
         id: "local-prompt",
-        title: "Local prompt file",
-        description: "Loads the generated Powerlevel10k local prompt file when it exists.",
+        title: "Local hooks and prompt file",
+        description: "Loads local customizations and then the generated Powerlevel10k prompt file.",
+        kind: "locked",
+        risk: "Keep this at the end so local overrides and prompt config apply after framework setup.",
         shortcuts: [],
-        start: 103,
-        end: 103
+        start: 126,
+        end: 127
       }
     ])
   },
@@ -277,67 +321,77 @@ const configDefinitions: Record<
       {
         id: "core",
         title: "Core mode",
-        description: "Starts Vim in modern mode with filetype plugins, indentation, and syntax.",
+        description: "Starts Vim in modern mode with filetype plugins, indentation, syntax, and a space leader.",
+        kind: "locked",
         shortcuts: [],
         start: 1,
-        end: 3
+        end: 4
       },
       {
         id: "encoding",
         title: "Encoding and files",
-        description: "Sets UTF-8 defaults, safer bells, autoread, hidden buffers, swap, and undo files.",
+        description: "Sets UTF-8 defaults, safer bells, autoread, hidden buffers, swap, undo, and cache directories.",
+        kind: "side-effect",
+        risk: "This creates ~/.vim cache directories during startup so project directories stay clean.",
         shortcuts: [],
-        start: 5,
-        end: 16
+        start: 6,
+        end: 21
       },
       {
         id: "indent",
         title: "Indentation",
         description: "Uses two-space indentation by default with expanded tabs.",
+        kind: "free",
         shortcuts: [],
-        start: 18,
-        end: 24
+        start: 23,
+        end: 29
       },
       {
         id: "search",
         title: "Search behavior",
         description: "Enables incremental smart-case search and a quick mapping to clear highlights.",
+        kind: "free",
         shortcuts: ["leader", "Space"],
-        start: 26,
-        end: 30
+        start: 31,
+        end: 35
       },
       {
         id: "performance",
         title: "Completion and redraw",
         description: "Keeps completion local and avoids unnecessary redraw work.",
+        kind: "free",
         shortcuts: [],
-        start: 32,
-        end: 34
+        start: 37,
+        end: 39
       },
       {
         id: "interface",
         title: "Interface",
-        description: "Shows status, ruler, line numbers, command feedback, title, mouse, and colors.",
+        description: "Shows status, ruler, line numbers, command feedback, title, mouse, colors, and split direction.",
+        kind: "free",
         shortcuts: [],
-        start: 36,
-        end: 46
+        start: 41,
+        end: 53
       },
       {
         id: "plugins",
         title: "vim-plug setup",
-        description: "Bootstraps vim-plug and installs only vim-sensible plus EditorConfig support.",
+        description: "Uses vim-plug only when plug.vim exists, with vim-sensible and EditorConfig support.",
+        kind: "side-effect",
         risk: "Keep plugin declarations after core Vim settings and before filetype-specific overrides.",
         shortcuts: [":PlugInstall"],
-        start: 48,
-        end: 59
+        start: 55,
+        end: 61
       },
       {
         id: "filetypes",
         title: "Filetype indentation",
         description: "Overrides indentation for common web, Ruby, and Python files.",
+        kind: "ordered",
+        risk: "Keep the augroup together so sourcing .vimrc replaces old autocmds instead of duplicating them.",
         shortcuts: [],
-        start: 61,
-        end: 64
+        start: 63,
+        end: 69
       }
     ])
   },
@@ -349,59 +403,78 @@ const configDefinitions: Record<
         id: "prefix",
         title: "Prefix and reload",
         description: "Uses Ctrl-A as the prefix and binds reload to prefix plus r.",
+        kind: "locked",
         risk: "Keep prefix bindings before later key bindings so the rest of the file uses the expected prefix.",
         shortcuts: ["C-a", "C-a r"],
         start: 1,
         end: 6
       },
       {
+        id: "terminal",
+        title: "Terminal capabilities",
+        description: "Sets tmux-256color and truecolor capability hints for modern terminals.",
+        kind: "ordered",
+        risk: "Keep this before status and color styling so later color settings render correctly.",
+        shortcuts: [],
+        start: 8,
+        end: 10
+      },
+      {
         id: "session",
         title: "Session behavior",
         description: "Enables mouse support, focus events, clipboard, renumbering, and deep history.",
+        kind: "free",
         shortcuts: [],
-        start: 8,
-        end: 15
+        start: 12,
+        end: 19
       },
       {
         id: "indexes",
         title: "Indexes",
         description: "Starts windows and panes at 1 for easier keyboard targeting.",
+        kind: "ordered",
+        risk: "Move this only if every window and pane binding still expects one-based indexes.",
         shortcuts: ["1"],
-        start: 17,
-        end: 19
+        start: 21,
+        end: 23
       },
       {
         id: "windows",
         title: "Windows and panes",
         description: "Adds pane splits, vim-style pane movement, window navigation, and resize keys.",
+        kind: "free",
         shortcuts: ["c", "|", "-", "h", "j", "k", "l", "Tab"],
-        start: 21,
-        end: 38
+        start: 25,
+        end: 42
       },
       {
         id: "copy",
         title: "Copy mode",
-        description: "Uses vi copy mode and tries common Linux clipboard tools before falling back.",
+        description: "Uses vi copy mode and tries macOS and Linux clipboard tools before falling back.",
+        kind: "side-effect",
+        risk: "Keep mode-keys before copy bindings. Clipboard commands run when text is copied.",
         shortcuts: ["v", "y", "Enter"],
-        start: 40,
-        end: 45
+        start: 44,
+        end: 49
       },
       {
         id: "status",
         title: "Status line",
         description: "Sets a compact status line with host, session, date, time, window, and pane.",
+        kind: "free",
         shortcuts: [],
-        start: 47,
-        end: 59
+        start: 51,
+        end: 63
       },
       {
         id: "tpm",
         title: "TPM block",
         description: "Keeps the tmux plugin manager block available but commented by default.",
+        kind: "side-effect",
         risk: "Keep TPM plugin declarations near the bottom. TPM expects plugin lines before its run command.",
         shortcuts: ["prefix", "I"],
-        start: 61,
-        end: 65
+        start: 65,
+        end: 69
       }
     ])
   },
@@ -1594,6 +1667,7 @@ function ConfigBlockEditor({
   const detailLineIndex = selectedLineBlock && selectedLine ? selectedLine.lineIndex : 0;
   const selectedLineText = detailLineBlock.content.trimEnd().split(/\r?\n/)[detailLineIndex] || "";
   const selectedLineNumber = (lineStarts.get(detailLineBlock.id) ?? 1) + detailLineIndex;
+  const activePluginNote = pluginNoteFor(configKey, activeBlock.id);
 
   return (
     <div className="config-builder">
@@ -1610,6 +1684,7 @@ function ConfigBlockEditor({
               "editor-block",
               block.id === activeBlock.id ? "active" : "",
               block.enabled ? "" : "disabled",
+              `kind-${block.kind}`,
               draggedBlock?.blockId === block.id ? "dragging" : ""
             ]
               .filter(Boolean)
@@ -1632,6 +1707,7 @@ function ConfigBlockEditor({
               >
                 <span>{block.title}</span>
                 <small>{block.description}</small>
+                <span className={`block-kind-pill kind-${block.kind}`}>{blockKindLabels[block.kind]}</span>
               </button>
               <div className="editor-block-actions">
                 <button
@@ -1710,14 +1786,12 @@ function ConfigBlockEditor({
           </span>
         </div>
         <p className="muted">{activeBlock.description}</p>
+        <div className="block-meta-row">
+          <span className={`block-kind-pill kind-${activeBlock.kind}`}>{blockKindLabels[activeBlock.kind]}</span>
+          <span className="meta-chip">{blockKindDescriptions[activeBlock.kind]}</span>
+        </div>
         {activeBlock.risk && <p className="order-warning">{activeBlock.risk}</p>}
-        {(configKey === "vimrc" || configKey === "tmux") && (
-          <p className="plugin-note">
-            {configKey === "vimrc"
-              ? "Vim plugin manager setup is part of the vim-plug block in this rc file."
-              : "tmux plugin manager setup is part of the TPM block in this rc file."}
-          </p>
-        )}
+        {activePluginNote && <p className="plugin-note">{activePluginNote}</p>}
         {activeBlock.shortcuts.length > 0 && <KeycapList keys={activeBlock.shortcuts} />}
         <div className="selected-line-detail">
           <span>Line {selectedLineNumber}</span>
@@ -1751,6 +1825,16 @@ function ConfigBlockEditor({
       </section>
     </div>
   );
+}
+
+function pluginNoteFor(configKey: ConfigKey, blockId: string) {
+  if (configKey === "vimrc" && blockId === "plugins") {
+    return "vim-plug is installed by the setup script. This rc block only uses it when plug.vim already exists.";
+  }
+  if (configKey === "tmux" && blockId === "tpm") {
+    return "TPM stays commented by default. Install TPM, uncomment this block, then press prefix plus I to install plugins.";
+  }
+  return "";
 }
 
 function KeycapList({ keys }: { keys: string[] }) {

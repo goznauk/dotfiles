@@ -102,8 +102,9 @@ Existing files are moved to `*.backup.YYYYMMDDHHMMSS` first.
 ## Vim
 
 Vim keeps `vim-plug`. Vim 8 native packages are fine, but `vim-plug` remains a
-simple and common default for plain Vim configs. The plugin list is intentionally
-small:
+simple and common default for plain Vim configs. The setup script installs
+`vim-plug`; `.vimrc` only uses it when it already exists. The plugin list is
+intentionally small:
 
 - `tpope/vim-sensible`
 - `editorconfig/editorconfig-vim`
