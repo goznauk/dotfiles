@@ -152,7 +152,7 @@ integration notes, Karabiner JSON, binary asset inventory.
 
 ### Commits created
 
-- Pending commit for this report.
+- `952c4a1 docs: start sweep report`
 
 ### Deferred items
 
@@ -192,7 +192,7 @@ top-level `README.md`, and validation command structure.
 
 ### Commits created
 
-- Pending commit for catalog validation.
+- `ee33b35 test: validate package catalog`
 
 ### Deferred items
 
@@ -232,7 +232,7 @@ build still completed with exit code 0.
 
 ### Commits created
 
-- Pending commit for root validation.
+- `330eab5 test: add repository check script`
 
 ### Deferred items
 
@@ -270,7 +270,7 @@ skip warning.
 
 ### Commits created
 
-- Pending commit for macOS script hardening.
+- `ff54c0a fix: harden macos setup script`
 
 ### Deferred items
 
@@ -309,7 +309,7 @@ skip warning.
 
 ### Commits created
 
-- Pending commit for command builder extraction.
+- `c587508 refactor: split chooser command builder`
 
 ### Deferred items
 
@@ -348,7 +348,7 @@ skip warning.
 
 ### Commits created
 
-- Pending commit for command-builder tests.
+- `60360ab test: cover chooser command builder`
 
 ### Deferred items
 
@@ -391,7 +391,7 @@ skip warning.
 
 ### Commits created
 
-- Pending commit for chooser UX hardening.
+- `b0a9b66 fix: improve chooser copy feedback`
 
 ### Deferred items
 
@@ -430,7 +430,7 @@ skip warning.
 
 ### Commits created
 
-- Pending commit for developer documentation and formatting conventions.
+- `6a179eb docs: document validation workflow`
 
 ### Deferred items
 
@@ -471,7 +471,7 @@ tmux sandbox skip warning.
 
 ### Commits created
 
-- Pending commit for Ubuntu dry-run support.
+- `c8cbcc6 feat: add ubuntu dry run`
 
 ### Deferred items
 
@@ -508,9 +508,114 @@ skip warning.
 
 ### Commits created
 
-- Pending commit for check coverage hardening.
+- `f80e507 test: expand text policy checks`
 
 ### Deferred items
 
 - Binary fonts and the legacy iStat Menus export remain outside text policy
   scans because they are tool assets rather than maintained source text.
+
+## Final Consolidated Report
+
+### Executive summary
+
+The sweep converted the repository from a mostly manual setup collection into a
+more maintainable, checked codebase. The highest-value changes were adding
+catalog validation, a root check script, command-builder tests, safer legacy
+macOS behavior, a cleaner chooser command boundary, and a dry-run path for the
+Ubuntu installer.
+
+No deployment, push, production infrastructure mutation, or secret access was
+performed.
+
+### Commits created
+
+- `952c4a1 docs: start sweep report`
+- `ee33b35 test: validate package catalog`
+- `330eab5 test: add repository check script`
+- `ff54c0a fix: harden macos setup script`
+- `c587508 refactor: split chooser command builder`
+- `60360ab test: cover chooser command builder`
+- `b0a9b66 fix: improve chooser copy feedback`
+- `6a179eb docs: document validation workflow`
+- `c8cbcc6 feat: add ubuntu dry run`
+- `f80e507 test: expand text policy checks`
+
+### Major improvements completed
+
+- Added baseline file notes for meaningful source, config, docs, and setup
+  files.
+- Added `scripts/validate-catalog.mjs` to validate OS targets, package groups,
+  package notes, duplicate package names, strategy defaults, and selected
+  Ubuntu package coverage.
+- Added `scripts/check.sh` as the root validation entry point.
+- Hardened the legacy macOS setup script with strict shell mode, `--yes`,
+  explicit `.env` validation, and quoted package installs.
+- Split chooser command generation into `chooser/src/commandBuilder.ts`.
+- Added focused command-builder tests without adding a test framework.
+- Improved chooser copy failure feedback and copy button accessibility labels.
+- Added `.editorconfig` and updated setup and Pages integration documentation.
+- Added `--dry-run` and shared apt package resolution to the Ubuntu installer.
+- Expanded text policy checks to cover maintained macOS text files and repo
+  metadata files.
+
+### Bugs fixed or risks reduced
+
+- Reduced silent catalog/package drift.
+- Reduced shell script failure ambiguity in the macOS setup path.
+- Reduced command-generation regression risk with focused tests.
+- Reduced clipboard failure ambiguity in the chooser UI.
+- Reduced Ubuntu installer preview risk with dry-run output.
+- Made the Ubuntu script Bash requirement explicit instead of failing later on
+  macOS Bash 3.
+
+### Test coverage added or improved
+
+- Catalog consistency validation.
+- Command builder tests for shell quoting, target version flags, apt skip logic,
+  package previews, custom refs, Docker/Podman preview lines, and config write
+  commands.
+- Root validation for TypeScript build, shell syntax, zsh syntax, Vim config
+  load, optional tmux config load, JSON parsing, ASCII text policy, and diff
+  whitespace.
+
+### Final verification
+
+- `./scripts/check.sh`: passed.
+- `npm audit --omit=dev`: passed with 0 vulnerabilities.
+- Browser DOM smoke check at
+  `http://127.0.0.1:5173/?view=install&qa=final-sweep`: page title matched,
+  version input, package catalog, and bootstrap command were present, and
+  browser error/warn logs were empty.
+
+### Known warnings and environment limits
+
+- Vite prints a Node version warning when `./scripts/check.sh` runs under this
+  shell's Node 22.9.0. The build exits 0. Vite asks for Node 20.19+ or 22.12+
+  on the Node 22 line.
+- The sandbox does not allow tmux to create its socket, so `scripts/check.sh`
+  warns and skips the tmux config load check here. The script still attempts it
+  when tmux can start normally.
+- The Ubuntu dry-run command cannot execute on this macOS host because the
+  system Bash is 3.2 and the Ubuntu installer requires Bash 4+. Ubuntu ships a
+  supported Bash version by default.
+- In-app browser screenshot capture still times out in this environment, so
+  visual verification used headless Chrome screenshots where needed.
+
+### Remaining recommended improvements
+
+- Add CI after deciding when this branch should publish automation.
+- Split more chooser helpers out of `main.tsx` if the UI keeps growing.
+- Add browser-level interaction tests if a stable local browser test path is
+  introduced.
+- Rebuild the macOS setup path only if it becomes an active target again.
+- Consider a catalog schema file if the package catalog grows substantially.
+
+### Suggested next steps
+
+- Use `./scripts/check.sh` before merging or squashing.
+- On a real Ubuntu host, run
+  `./Ubuntu/setup-ubuntu.sh --dry-run --target-version 26.04` to inspect the
+  resolved package plan.
+- Keep the final merge as one squashed commit on main if that remains the
+  preferred history style.
