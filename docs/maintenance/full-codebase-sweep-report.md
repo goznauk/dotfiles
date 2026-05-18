@@ -237,3 +237,42 @@ build still completed with exit code 0.
 ### Deferred items
 
 - Add command-helper tests after extracting pure chooser command logic.
+
+## Iteration 4
+
+### Files and areas inspected
+
+`MacOS/setup-mac.sh`, `.env.example`, `MacOS/README.md`, `setup.sh`, and the
+root validation script.
+
+### Main findings
+
+- The macOS script was intentionally legacy but still lacked basic Bash safety
+  settings.
+- The script assumed `ENVPATH` was set by the dispatcher and failed unclearly if
+  `.env` was missing.
+- Package installation used unquoted word splitting.
+
+### Improvements implemented
+
+- Rewrote `MacOS/setup-mac.sh` with `set -euo pipefail`, usage handling,
+  `--yes`, explicit `.env` validation, safer prompts, and quoted package array
+  installs.
+- Kept the legacy script scope limited to Homebrew packages and Java cask.
+- Documented the non-interactive macOS path.
+
+### Tests and checks run
+
+- `./scripts/check.sh`
+
+The check passed with the same Vite Node version warning and the sandbox tmux
+skip warning.
+
+### Commits created
+
+- Pending commit for macOS script hardening.
+
+### Deferred items
+
+- The old Git profile fields in `.env.example` are still not used by the macOS
+  script; leave them until the macOS path is actively rebuilt.

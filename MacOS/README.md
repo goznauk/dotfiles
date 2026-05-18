@@ -50,6 +50,12 @@ The legacy script reads package settings from `.env`:
 It installs Homebrew if missing, then asks before installing packages from
 `OSX_PACKAGES`.
 
+For a non-interactive run:
+
+```sh
+./setup.sh macos --yes
+```
+
 ## App notes
 
 Old app list:
