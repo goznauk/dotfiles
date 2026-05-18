@@ -4,6 +4,7 @@ ca-certificates
 curl
 wget
 gnupg
+openssl
 lsb-release
 software-properties-common
 build-essential

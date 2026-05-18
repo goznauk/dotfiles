@@ -7,4 +7,5 @@ hyperfine
 nmap
 openssh-server
 shfmt
+tealdeer
 yq

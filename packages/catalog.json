@@ -149,6 +149,19 @@
       "note": "Imports and verifies package repository signing keys."
     },
     {
+      "id": "base.openssl",
+      "group": "base",
+      "label": "OpenSSL CLI",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["openssl"],
+        "macos": ["openssl@3"],
+        "amazon": ["openssl"],
+        "rhel": ["openssl"]
+      },
+      "note": "TLS and certificate command line tools kept from the original package list."
+    },
+    {
       "id": "base.release-info",
       "group": "base",
       "label": "Release information helpers",
@@ -416,6 +429,19 @@
       "note": "Large file support for repositories that keep binary assets in Git."
     },
     {
+      "id": "git.git-flow",
+      "group": "git",
+      "label": "Git Flow",
+      "defaultSelected": false,
+      "packages": {
+        "ubuntu": ["git-flow"],
+        "macos": ["git-flow"],
+        "amazon": [],
+        "rhel": []
+      },
+      "note": "Legacy branching helper kept visible from the original package list, but not selected by default."
+    },
+    {
       "id": "git.transfer",
       "group": "git",
       "label": "Transfer tools",
@@ -507,6 +533,19 @@
       "note": "Useful when debugging ports, sockets, packet flow, and failing native processes."
     },
     {
+      "id": "network.nginx",
+      "group": "network",
+      "label": "nginx",
+      "defaultSelected": false,
+      "packages": {
+        "ubuntu": ["nginx"],
+        "macos": ["nginx"],
+        "amazon": ["nginx"],
+        "rhel": ["nginx"]
+      },
+      "note": "Optional local web server retained from the original package list without installing it by default."
+    },
+    {
       "id": "utilities.search",
       "group": "utilities",
       "label": "Search and fuzzy find",
@@ -544,6 +583,19 @@
         "rhel": ["htop", "btop"]
       },
       "note": "Interactive process, CPU, memory, and system activity viewers."
+    },
+    {
+      "id": "utilities.tldr",
+      "group": "utilities",
+      "label": "tldr pages",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["tealdeer"],
+        "macos": ["tealdeer"],
+        "amazon": [],
+        "rhel": []
+      },
+      "note": "Fast tldr command client kept from the original package list. Not mapped for AL2023 or RHEL defaults."
     },
     {
       "id": "utilities.misc",
