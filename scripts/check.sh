@@ -67,10 +67,15 @@ if LC_ALL=C rg -n -g '!node_modules' -g '!dist' '[^ -~	]' \
   "$ROOT_DIR/common" \
   "$ROOT_DIR/scripts" \
   "$ROOT_DIR/docs" \
+  "$ROOT_DIR/MacOS/README.md" \
+  "$ROOT_DIR/MacOS/setup-mac.sh" \
+  "$ROOT_DIR/MacOS/config_files/Karabiner_KorEng.json" \
   "$ROOT_DIR/README.md" \
   "$ROOT_DIR/setup.sh" \
   "$ROOT_DIR/install.sh" \
-  "$ROOT_DIR/.env.example"; then
+  "$ROOT_DIR/.env.example" \
+  "$ROOT_DIR/.editorconfig" \
+  "$ROOT_DIR/.gitignore"; then
   printf 'Non-ASCII text found in checked source files.\n' >&2
   exit 1
 fi

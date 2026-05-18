@@ -477,3 +477,40 @@ tmux sandbox skip warning.
 
 - The chooser does not expose `--dry-run` as a UI option because its command
   panel is already a preview surface.
+
+## Iteration 10
+
+### Files and areas inspected
+
+`scripts/check.sh`, `.editorconfig`, `.gitignore`, maintained macOS text files,
+Karabiner JSON, docs, shell scripts, package catalog, and final validation
+coverage.
+
+### Main findings
+
+- The root ASCII/text policy scan did not cover `.editorconfig`, `.gitignore`,
+  or maintained macOS text files.
+- These files are part of the reviewed source surface and should be checked
+  before final verification.
+
+### Improvements implemented
+
+- Expanded `scripts/check.sh` ASCII/text policy coverage to include
+  `.editorconfig`, `.gitignore`, `MacOS/README.md`, `MacOS/setup-mac.sh`, and
+  `MacOS/config_files/Karabiner_KorEng.json`.
+
+### Tests and checks run
+
+- `./scripts/check.sh`
+
+The root check passed with the known Vite Node version warning and tmux sandbox
+skip warning.
+
+### Commits created
+
+- Pending commit for check coverage hardening.
+
+### Deferred items
+
+- Binary fonts and the legacy iStat Menus export remain outside text policy
+  scans because they are tool assets rather than maintained source text.
