@@ -20,6 +20,7 @@ DOCKER_STRATEGY="official"
 NODE_STRATEGY="mise"
 PYTHON_STRATEGY="system-uv"
 JAVA_STRATEGY="none"
+TARGET_VERSION=""
 
 usage() {
   cat <<'USAGE'
@@ -33,6 +34,8 @@ Options:
   --skip-shell     Skip zsh and oh-my-zsh setup
   --skip-tools     Skip uv, rustup, and language runtime setup
   --with-tpm       Install tmux plugin manager
+  --target-version VALUE
+                  Expected Ubuntu VERSION_ID, for example 26.04
   --apt-packages LIST
                   Install exactly these apt packages, comma separated
   --optional-packages LIST
@@ -83,6 +86,14 @@ while [[ "$#" -gt 0 ]]; do
     --with-tpm)
       WITH_TPM=1
       shift
+      ;;
+    --target-version)
+      TARGET_VERSION="${2:-}"
+      if [[ -z "$TARGET_VERSION" ]]; then
+        printf 'Missing value for --target-version\n' >&2
+        exit 1
+      fi
+      shift 2
       ;;
     --apt-packages)
       APT_PACKAGE_MODE="selected"
@@ -345,6 +356,11 @@ detect_ubuntu() {
     warn 'Ubuntu 25.04 reached end of life on 2026-01-15.'
     warn 'Use Ubuntu 24.04 LTS or 26.04 LTS when possible.'
     confirm 'Continue with Ubuntu 25.04 setup?' || exit 1
+  fi
+
+  if [[ -n "$TARGET_VERSION" && "${VERSION_ID:-}" != "$TARGET_VERSION" ]]; then
+    warn "Target version is $TARGET_VERSION, detected ${VERSION_ID:-unknown}."
+    confirm 'Continue with the detected Ubuntu version?' || exit 1
   fi
 }
 

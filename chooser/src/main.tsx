@@ -20,6 +20,12 @@ type JavaStrategyId = "mise-temurin-21" | "distro-openjdk-21" | "none";
 type ConfigKey = "zshrc" | "vimrc" | "tmux" | "htop";
 type DraggedBlock = { configKey: ConfigKey; blockId: string } | null;
 
+type OsVersion = {
+  value: string;
+  label: string;
+  note: string;
+};
+
 type OsTarget = {
   id: OsId;
   label: string;
@@ -27,6 +33,8 @@ type OsTarget = {
   commandTarget: string;
   implemented: boolean;
   note: string;
+  defaultVersion: string;
+  versions: OsVersion[];
 };
 
 type PackageGroup = {
@@ -493,7 +501,18 @@ const defaultDockerStrategy = (osId: OsId): DockerStrategyId => {
   return (strategy?.id as DockerStrategyId | undefined) ?? "none";
 };
 
+const defaultVersionForTarget = (target: OsTarget) =>
+  target.defaultVersion || target.versions[0]?.value || "";
+
+const createInitialTargetVersions = () =>
+  Object.fromEntries(
+    catalog.osTargets.map((target) => [target.id, defaultVersionForTarget(target)])
+  ) as Record<OsId, string>;
+
 const packageNamesForOs = (item: CatalogPackage, osId: OsId) => item.packages[osId] ?? [];
+
+const packageDescriptionFor = (item: CatalogPackage, group: PackageGroup) =>
+  item.note ?? group.description;
 
 const initialParams =
   typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
@@ -515,15 +534,28 @@ const readInitialConfig = (): ConfigKey => {
     : "zshrc";
 };
 
+const readInitialExpandedGroups = () => {
+  const groups = new Set(
+    initialParams
+      .getAll("group")
+      .flatMap((value) => value.split(","))
+      .map((value) => value.trim())
+      .filter(Boolean)
+  );
+
+  return Object.fromEntries(catalog.groups.map((group) => [group.id, groups.has(group.id)]));
+};
+
 function App() {
   const initialOs = readInitialOs();
   const [activeView, setActiveView] = useState<ViewId>(readInitialView);
   const [activeOs, setActiveOs] = useState<OsId>(initialOs);
+  const [targetVersions, setTargetVersions] = useState<Record<OsId, string>>(createInitialTargetVersions);
   const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>(
     catalog.packages.filter((item) => item.defaultSelected).map((item) => item.id)
   );
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
-    Object.fromEntries(catalog.groups.map((group, index) => [group.id, index < 3]))
+    readInitialExpandedGroups
   );
   const [stepSelection, setStepSelection] = useState<Record<InstallStepKey, boolean>>({
     packages: true,
@@ -555,6 +587,7 @@ function App() {
   const [draggedBlock, setDraggedBlock] = useState<DraggedBlock>(null);
 
   const activeTarget = catalog.osTargets.find((target) => target.id === activeOs) ?? catalog.osTargets[0];
+  const activeTargetVersion = targetVersions[activeOs] ?? defaultVersionForTarget(activeTarget);
   const selectedPackageItems = useMemo(
     () => catalog.packages.filter((item) => selectedPackageIds.includes(item.id)),
     [selectedPackageIds]
@@ -573,6 +606,7 @@ function App() {
       buildCommands({
         activeOs,
         activeTarget,
+        targetVersion: activeTargetVersion,
         selectedPackageNames,
         stepSelection,
         assumeYes,
@@ -588,6 +622,7 @@ function App() {
     [
       activeOs,
       activeTarget,
+      activeTargetVersion,
       assumeYes,
       dockerEnabled,
       dockerStrategy,
@@ -740,7 +775,15 @@ function App() {
         </nav>
       </header>
 
-      <TargetSelector activeOs={activeOs} activeTarget={activeTarget} onChange={switchOs} />
+      <TargetSelector
+        activeOs={activeOs}
+        activeTarget={activeTarget}
+        targetVersion={activeTargetVersion}
+        onChange={switchOs}
+        onVersionChange={(version) =>
+          setTargetVersions((current) => ({ ...current, [activeOs]: version }))
+        }
+      />
 
       {activeView === "install" && (
         <section className="main-grid">
@@ -875,6 +918,7 @@ function App() {
             pythonStrategy={pythonStrategy}
             repoRef={repoRef}
             selectedPackageNames={selectedPackageNames}
+            targetVersion={activeTargetVersion}
             setAssumeYes={setAssumeYes}
             setInstallTpm={setInstallTpm}
             setRepoRef={setRepoRef}
@@ -960,6 +1004,7 @@ function App() {
           pythonStrategy={pythonStrategy}
           selectedPackageNames={selectedPackageNames}
           stepSelection={stepSelection}
+          targetVersion={activeTargetVersion}
           onCopy={copyText}
           copied={copied}
         />
@@ -971,11 +1016,15 @@ function App() {
 function TargetSelector({
   activeOs,
   activeTarget,
-  onChange
+  targetVersion,
+  onChange,
+  onVersionChange
 }: {
   activeOs: OsId;
   activeTarget: OsTarget;
+  targetVersion: string;
   onChange: (osId: OsId) => void;
+  onVersionChange: (version: string) => void;
 }) {
   return (
     <section className="target-bar" aria-label="Operating system">
@@ -987,6 +1036,26 @@ function TargetSelector({
           {!activeTarget.implemented ? " preview" : ""}
         </span>
       </div>
+      <label className="version-field">
+        <span>Version</span>
+        <input
+          list={`versions-${activeTarget.id}`}
+          value={targetVersion}
+          onChange={(event) => onVersionChange(event.target.value)}
+          spellCheck={false}
+        />
+        <datalist id={`versions-${activeTarget.id}`}>
+          {activeTarget.versions.map((version) => (
+            <option key={version.value} value={version.value}>
+              {version.label}
+            </option>
+          ))}
+        </datalist>
+        <small>
+          {(activeTarget.versions.find((version) => version.value === targetVersion) ?? activeTarget.versions[0])
+            ?.note ?? "Custom version"}
+        </small>
+      </label>
       <div className="target-options" role="group" aria-label="Target OS choices">
         {catalog.osTargets.map((target) => (
           <button
@@ -997,7 +1066,7 @@ function TargetSelector({
           >
             <strong>{target.label}</strong>
             <span>
-              {target.packageManager}
+              {target.id === activeOs ? targetVersion : defaultVersionForTarget(target)}
               {!target.implemented ? " preview" : ""}
             </span>
           </button>
@@ -1065,30 +1134,34 @@ function PackageGroupPanel({
           {selectedCount}/{totalCount}
         </em>
       </summary>
-      <div className="group-actions">
-        <button type="button" onClick={onSelectAll}>
-          Select group
-        </button>
-        <button type="button" onClick={onSelectNone}>
-          Clear group
-        </button>
+      <div className="group-detail">
+        <p>{group.description}</p>
+        <div className="group-actions">
+          <button type="button" onClick={onSelectAll}>
+            Select group
+          </button>
+          <button type="button" onClick={onSelectNone}>
+            Clear group
+          </button>
+        </div>
       </div>
-      <div className="package-table">
+      <div className="package-tree">
         {packages.map((item) => {
           const packageNames = packageNamesForOs(item, activeOs);
           const hasPackageForOs = packageNames.length > 0;
           return (
-            <label className="package-row" key={item.id}>
+            <label className="package-tree-row" key={item.id}>
               <input
                 type="checkbox"
                 checked={selectedPackageIds.includes(item.id)}
                 disabled={!hasPackageForOs}
                 onChange={() => onPackageToggle(item.id)}
               />
-              <span>
+              <span className="tree-branch" aria-hidden="true" />
+              <span className="package-row-copy">
                 <strong>{item.label}</strong>
-                <small>{hasPackageForOs ? packageNames.join(", ") : "No package needed"}</small>
-                {item.note && <small>{item.note}</small>}
+                <small>{packageDescriptionFor(item, group)}</small>
+                <code>{hasPackageForOs ? packageNames.join(", ") : "No package needed"}</code>
               </span>
             </label>
           );
@@ -1445,6 +1518,7 @@ function CommandPanel({
   pythonStrategy,
   repoRef,
   selectedPackageNames,
+  targetVersion,
   setAssumeYes,
   setInstallTpm,
   setRepoRef,
@@ -1461,6 +1535,7 @@ function CommandPanel({
   pythonStrategy: PythonStrategyId;
   repoRef: string;
   selectedPackageNames: string[];
+  targetVersion: string;
   setAssumeYes: (value: boolean) => void;
   setInstallTpm: (value: boolean) => void;
   setRepoRef: (value: string) => void;
@@ -1483,6 +1558,7 @@ function CommandPanel({
         <input type="checkbox" checked={installTpm} onChange={() => setInstallTpm(!installTpm)} />
         <span>Install TPM</span>
       </label>
+      <p className="muted compact-note">Target version: {targetVersion || "not set"}</p>
       <p className="muted compact-note">Docker install: {dockerEnabled ? "on" : "off"}</p>
       <p className="muted compact-note">Python setup: {pythonStrategy}</p>
       <p className="muted compact-note">Java install: {javaEnabled ? javaStrategy : "off"}</p>
@@ -1523,6 +1599,7 @@ function SummaryView({
   pythonStrategy,
   selectedPackageNames,
   stepSelection,
+  targetVersion,
   onCopy
 }: {
   activeTarget: OsTarget;
@@ -1537,6 +1614,7 @@ function SummaryView({
   pythonStrategy: PythonStrategyId;
   selectedPackageNames: string[];
   stepSelection: Record<InstallStepKey, boolean>;
+  targetVersion: string;
   onCopy: (key: string, value: string) => void;
 }) {
   const configLineCounts = (Object.keys(configContents) as ConfigKey[]).map((key) => ({
@@ -1554,6 +1632,10 @@ function SummaryView({
           <div>
             <dt>Package manager</dt>
             <dd>{activeTarget.packageManager}</dd>
+          </div>
+          <div>
+            <dt>Target version</dt>
+            <dd>{targetVersion || "not set"}</dd>
           </div>
           <div>
             <dt>Install steps</dt>
@@ -1619,6 +1701,7 @@ function SummaryView({
 type BuildCommandInput = {
   activeOs: OsId;
   activeTarget: OsTarget;
+  targetVersion: string;
   selectedPackageNames: string[];
   stepSelection: Record<InstallStepKey, boolean>;
   assumeYes: boolean;
@@ -1638,6 +1721,10 @@ function buildCommands(input: BuildCommandInput) {
 
   if (input.assumeYes) {
     flags.push("--yes");
+  }
+
+  if (input.targetVersion.trim()) {
+    flags.push("--target-version", input.targetVersion.trim());
   }
 
   for (const step of installSteps) {
@@ -1674,6 +1761,7 @@ function buildCommands(input: BuildCommandInput) {
     local: `./setup.sh ${setupArgs}`,
     packageCommand: buildPackageCommand(
       input.activeOs,
+      input.targetVersion,
       input.selectedPackageNames,
       input.dockerEnabled ? input.dockerStrategy : "none",
       input.nodeStrategy,
@@ -1685,6 +1773,7 @@ function buildCommands(input: BuildCommandInput) {
 
 function buildPackageCommand(
   osId: OsId,
+  targetVersion: string,
   packages: string[],
   dockerStrategy: DockerStrategyId,
   nodeStrategy: NodeStrategyId,
@@ -1692,19 +1781,24 @@ function buildPackageCommand(
   javaStrategy: JavaStrategyId
 ) {
   const installLine =
-    osId === "macos"
+    osId === "ubuntu"
+      ? packages.length > 0
+        ? `sudo apt install -y ${packages.map(shellQuote).join(" ")}`
+        : "# No apt packages selected"
+      : osId === "macos"
       ? packages.length > 0
         ? `brew install ${packages.map(shellQuote).join(" ")}`
         : "# No brew packages selected"
       : packages.length > 0
         ? `sudo dnf install -y ${packages.map(shellQuote).join(" ")}`
         : "# No dnf packages selected";
+  const targetLine = targetVersion.trim() ? `# Target OS version: ${targetVersion.trim()}` : "";
   const dockerLine = dockerPreviewLine(osId, dockerStrategy);
   const nodeLine = nodePreviewLine(nodeStrategy);
   const pythonLine = pythonPreviewLine(pythonStrategy);
   const javaLine = javaPreviewLine(osId, javaStrategy);
 
-  return [installLine, dockerLine, nodeLine, pythonLine, javaLine].filter(Boolean).join("\n");
+  return [targetLine, installLine, dockerLine, nodeLine, pythonLine, javaLine].filter(Boolean).join("\n");
 }
 
 function dockerPreviewLine(osId: OsId, strategy: DockerStrategyId) {

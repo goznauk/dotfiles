@@ -6,7 +6,14 @@
       "packageManager": "apt",
       "commandTarget": "ubuntu",
       "implemented": true,
-      "note": "The bootstrap installer supports Ubuntu first. Ubuntu 25.04 is past end of life; prefer 24.04 LTS or 26.04 LTS when possible."
+      "note": "The bootstrap installer supports Ubuntu first. Ubuntu 25.04 is past end of life; prefer 24.04 LTS or 26.04 LTS when possible.",
+      "defaultVersion": "26.04",
+      "versions": [
+        { "value": "26.04", "label": "26.04 LTS", "note": "Latest LTS release." },
+        { "value": "25.10", "label": "25.10", "note": "Current interim release." },
+        { "value": "24.04", "label": "24.04 LTS", "note": "Previous LTS release." },
+        { "value": "22.04", "label": "22.04 LTS", "note": "Older LTS release." }
+      ]
     },
     {
       "id": "macos",
@@ -14,7 +21,13 @@
       "packageManager": "brew",
       "commandTarget": "macos",
       "implemented": false,
-      "note": "The page generates brew commands and config previews."
+      "note": "The page generates brew commands and config previews.",
+      "defaultVersion": "26.5",
+      "versions": [
+        { "value": "26.5", "label": "Tahoe 26.5", "note": "Latest Tahoe update." },
+        { "value": "26", "label": "Tahoe 26", "note": "Current major release." },
+        { "value": "15.7.7", "label": "Sequoia 15.7.7", "note": "Previous major release." }
+      ]
     },
     {
       "id": "amazon",
@@ -22,7 +35,13 @@
       "packageManager": "dnf",
       "commandTarget": "amazon",
       "implemented": false,
-      "note": "The page generates dnf commands and config previews."
+      "note": "The page generates dnf commands and config previews.",
+      "defaultVersion": "2023.11.20260514",
+      "versions": [
+        { "value": "2023.11.20260514", "label": "2023.11.20260514", "note": "Latest AL2023 release notes found." },
+        { "value": "2023.11", "label": "2023.11", "note": "Current quarterly release line." },
+        { "value": "2023.10", "label": "2023.10", "note": "Previous quarterly release line." }
+      ]
     },
     {
       "id": "rhel",
@@ -30,7 +49,13 @@
       "packageManager": "dnf",
       "commandTarget": "rhel",
       "implemented": false,
-      "note": "The page generates dnf commands and config previews."
+      "note": "The page generates dnf commands and config previews.",
+      "defaultVersion": "10.1",
+      "versions": [
+        { "value": "10.1", "label": "RHEL 10.1", "note": "Latest RHEL 10 minor release." },
+        { "value": "10.0", "label": "RHEL 10.0", "note": "Initial RHEL 10 release." },
+        { "value": "9.7", "label": "RHEL 9.7", "note": "Latest RHEL 9 minor release." }
+      ]
     }
   ],
   "groups": [
@@ -94,7 +119,8 @@
         "macos": [],
         "amazon": ["ca-certificates"],
         "rhel": ["ca-certificates"]
-      }
+      },
+      "note": "Trusted root certificates for HTTPS, package repositories, and language installers."
     },
     {
       "id": "base.apt-transport",
@@ -106,7 +132,8 @@
         "macos": [],
         "amazon": [],
         "rhel": []
-      }
+      },
+      "note": "Keeps older apt installs ready for HTTPS repository definitions."
     },
     {
       "id": "base.gnupg",
@@ -118,7 +145,8 @@
         "macos": ["gnupg"],
         "amazon": ["gnupg2"],
         "rhel": ["gnupg2"]
-      }
+      },
+      "note": "Imports and verifies package repository signing keys."
     },
     {
       "id": "base.release-info",
@@ -130,7 +158,8 @@
         "macos": [],
         "amazon": [],
         "rhel": []
-      }
+      },
+      "note": "Provides release metadata and apt repository helper commands."
     },
     {
       "id": "base.archives",
@@ -142,7 +171,21 @@
         "macos": ["xz"],
         "amazon": ["unzip", "zip", "xz", "tar"],
         "rhel": ["unzip", "zip", "xz", "tar"]
-      }
+      },
+      "note": "Handles common source archives, binary releases, and downloaded bundles."
+    },
+    {
+      "id": "base.system-tools",
+      "group": "base",
+      "label": "System file and process basics",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["coreutils", "findutils", "file", "less", "procps", "psmisc"],
+        "macos": ["coreutils", "findutils"],
+        "amazon": ["coreutils", "findutils", "file", "less", "procps-ng", "psmisc"],
+        "rhel": ["coreutils", "findutils", "file", "less", "procps-ng", "psmisc"]
+      },
+      "note": "Standard file, pager, process, and signal helpers used by many scripts."
     },
     {
       "id": "build.essential",
@@ -167,7 +210,8 @@
         "macos": ["cmake"],
         "amazon": ["cmake"],
         "rhel": ["cmake"]
-      }
+      },
+      "note": "Build system used by many native libraries and language extensions."
     },
     {
       "id": "build.ninja",
@@ -179,7 +223,8 @@
         "macos": ["ninja"],
         "amazon": ["ninja-build"],
         "rhel": ["ninja-build"]
-      }
+      },
+      "note": "Fast build executor commonly paired with CMake and Meson."
     },
     {
       "id": "build.autotools",
@@ -191,7 +236,8 @@
         "macos": ["autoconf", "automake", "libtool", "pkg-config"],
         "amazon": ["autoconf", "automake", "libtool", "pkgconf-pkg-config"],
         "rhel": ["autoconf", "automake", "libtool", "pkgconf-pkg-config"]
-      }
+      },
+      "note": "Classic configure script tools plus pkg-config metadata lookup."
     },
     {
       "id": "build.llvm",
@@ -203,7 +249,8 @@
         "macos": ["llvm"],
         "amazon": ["clang", "lldb", "gdb"],
         "rhel": ["clang", "lldb", "gdb"]
-      }
+      },
+      "note": "Alternative compiler and debuggers for native build failures."
     },
     {
       "id": "build.headers",
@@ -248,7 +295,47 @@
           "tk-devel",
           "libuuid-devel"
         ]
-      }
+      },
+      "note": "Headers commonly needed when compiling Python, Ruby, Rust, and database packages."
+    },
+    {
+      "id": "build.generators",
+      "group": "build",
+      "label": "Parser and configure generators",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["m4", "bison", "flex", "gettext", "patch"],
+        "macos": ["m4", "bison", "flex", "gettext", "patch"],
+        "amazon": ["m4", "bison", "flex", "gettext", "patch"],
+        "rhel": ["m4", "bison", "flex", "gettext", "patch"]
+      },
+      "note": "Common dependencies for projects that build C, C++, Python, Ruby, or database extensions."
+    },
+    {
+      "id": "build.cache-linkers",
+      "group": "build",
+      "label": "Compiler cache and faster linker",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["ccache", "mold"],
+        "macos": ["ccache", "mold"],
+        "amazon": ["ccache"],
+        "rhel": ["ccache", "mold"]
+      },
+      "note": "Speeds up repeat local builds when the distro packages are available."
+    },
+    {
+      "id": "build.common-libs",
+      "group": "build",
+      "label": "Common library headers",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["libcurl4-openssl-dev", "libxml2-dev", "libyaml-dev", "libzstd-dev", "libevent-dev"],
+        "macos": ["curl", "libxml2", "libyaml", "zstd", "libevent"],
+        "amazon": ["libcurl-devel", "libxml2-devel", "libyaml-devel", "libzstd-devel", "libevent-devel"],
+        "rhel": ["libcurl-devel", "libxml2-devel", "libyaml-devel", "libzstd-devel", "libevent-devel"]
+      },
+      "note": "Headers for native dependencies that appear often in language package builds."
     },
     {
       "id": "shell.zsh",
@@ -260,7 +347,8 @@
         "macos": ["zsh"],
         "amazon": ["zsh"],
         "rhel": ["zsh"]
-      }
+      },
+      "note": "Interactive shell used by the dotfiles."
     },
     {
       "id": "shell.vim",
@@ -272,7 +360,8 @@
         "macos": ["vim"],
         "amazon": ["vim-enhanced"],
         "rhel": ["vim-enhanced"]
-      }
+      },
+      "note": "Fallback editor with a small plugin manager setup."
     },
     {
       "id": "shell.tmux",
@@ -284,7 +373,8 @@
         "macos": ["tmux"],
         "amazon": ["tmux"],
         "rhel": ["tmux"]
-      }
+      },
+      "note": "Terminal multiplexer with the ctrl-a prefix config."
     },
     {
       "id": "shell.direnv",
@@ -296,7 +386,8 @@
         "macos": ["direnv"],
         "amazon": ["direnv"],
         "rhel": ["direnv"]
-      }
+      },
+      "note": "Loads project-local environment variables when entering a directory."
     },
     {
       "id": "git.git",
@@ -308,7 +399,8 @@
         "macos": ["git"],
         "amazon": ["git"],
         "rhel": ["git"]
-      }
+      },
+      "note": "Version control and source checkout tool."
     },
     {
       "id": "git.git-lfs",
@@ -320,7 +412,8 @@
         "macos": ["git-lfs"],
         "amazon": ["git-lfs"],
         "rhel": ["git-lfs"]
-      }
+      },
+      "note": "Large file support for repositories that keep binary assets in Git."
     },
     {
       "id": "git.transfer",
@@ -332,7 +425,8 @@
         "macos": ["curl", "wget", "rsync", "openssh"],
         "amazon": ["curl", "wget", "rsync", "openssh-clients"],
         "rhel": ["curl", "wget", "rsync", "openssh-clients"]
-      }
+      },
+      "note": "Downloads files, syncs directories, and connects to remote machines."
     },
     {
       "id": "python.runtime",
@@ -344,7 +438,8 @@
         "macos": ["python", "pipx"],
         "amazon": ["python3", "python3-devel", "python3-pip", "pipx"],
         "rhel": ["python3", "python3-devel", "python3-pip", "pipx"]
-      }
+      },
+      "note": "System Python, venv support, headers, pip, and isolated CLI installs."
     },
     {
       "id": "python.sqlite",
@@ -356,7 +451,8 @@
         "macos": ["sqlite"],
         "amazon": ["sqlite"],
         "rhel": ["sqlite"]
-      }
+      },
+      "note": "Local database CLI used by many development tools and test suites."
     },
     {
       "id": "network.iproute",
@@ -368,7 +464,8 @@
         "macos": [],
         "amazon": ["iproute", "net-tools", "iputils"],
         "rhel": ["iproute", "net-tools", "iputils"]
-      }
+      },
+      "note": "Shows addresses, routes, interfaces, and basic connectivity."
     },
     {
       "id": "network.dns",
@@ -380,7 +477,8 @@
         "macos": ["bind"],
         "amazon": ["bind-utils"],
         "rhel": ["bind-utils"]
-      }
+      },
+      "note": "DNS lookup tools such as dig and nslookup."
     },
     {
       "id": "network.tracing",
@@ -392,7 +490,21 @@
         "macos": ["traceroute", "nmap", "lsof"],
         "amazon": ["traceroute", "nmap", "lsof"],
         "rhel": ["traceroute", "nmap", "lsof"]
-      }
+      },
+      "note": "Inspects routes, open ports, and processes holding sockets."
+    },
+    {
+      "id": "network.debugging",
+      "group": "network",
+      "label": "Network and syscall debugging",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["tcpdump", "strace", "socat", "netcat-openbsd", "whois", "mtr-tiny"],
+        "macos": ["socat", "netcat", "whois", "mtr"],
+        "amazon": ["tcpdump", "strace", "socat", "nmap-ncat", "whois", "mtr"],
+        "rhel": ["tcpdump", "strace", "socat", "nmap-ncat", "whois", "mtr"]
+      },
+      "note": "Useful when debugging ports, sockets, packet flow, and failing native processes."
     },
     {
       "id": "utilities.search",
@@ -404,7 +516,8 @@
         "macos": ["ripgrep", "fd", "fzf"],
         "amazon": ["ripgrep", "fd-find", "fzf"],
         "rhel": ["ripgrep", "fd-find", "fzf"]
-      }
+      },
+      "note": "Fast source search, file finding, and interactive selection."
     },
     {
       "id": "utilities.json",
@@ -416,7 +529,8 @@
         "macos": ["jq", "yq"],
         "amazon": ["jq", "yq"],
         "rhel": ["jq", "yq"]
-      }
+      },
+      "note": "Command line parsing and formatting for JSON and YAML."
     },
     {
       "id": "utilities.process",
@@ -428,7 +542,8 @@
         "macos": ["htop", "btop"],
         "amazon": ["htop", "btop"],
         "rhel": ["htop", "btop"]
-      }
+      },
+      "note": "Interactive process, CPU, memory, and system activity viewers."
     },
     {
       "id": "utilities.misc",
@@ -440,7 +555,8 @@
         "macos": ["tree", "shellcheck", "shfmt", "hyperfine", "bat", "eza", "git-extras"],
         "amazon": ["tree", "ShellCheck", "shfmt", "hyperfine", "bat", "eza", "git-extras"],
         "rhel": ["tree", "ShellCheck", "shfmt", "hyperfine", "bat", "eza", "git-extras"]
-      }
+      },
+      "note": "Daily shell quality, benchmarking, listing, and formatting helpers."
     },
     {
       "id": "utilities.clipboard",
@@ -452,7 +568,21 @@
         "macos": [],
         "amazon": ["xclip", "wl-clipboard"],
         "rhel": ["xclip", "wl-clipboard"]
-      }
+      },
+      "note": "Clipboard access for X11 and Wayland sessions."
+    },
+    {
+      "id": "utilities.transfer-modern",
+      "group": "utilities",
+      "label": "Modern transfer and secret tools",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["httpie", "aria2", "age", "zstd", "parallel"],
+        "macos": ["httpie", "aria2", "age", "zstd", "parallel"],
+        "amazon": ["httpie", "aria2", "age", "zstd", "parallel"],
+        "rhel": ["httpie", "aria2", "age", "zstd", "parallel"]
+      },
+      "note": "Convenient HTTP, download, compression, encryption, and batch execution tools."
     }
   ],
   "strategies": {

@@ -8,7 +8,10 @@ Current behavior:
 - macOS, Amazon Linux 2023, and RHEL generate package/config preview commands.
 - The selected OS stays in a compact target selector instead of persistent
   option cards.
+- Each OS has an editable version input seeded from the current known release.
 - Package names come from `../packages/catalog.json`.
+- Package groups expand into a compact vertical tree with descriptions and
+  resolved package names per OS.
 - Docker uses an on/off toggle. When enabled, strategy choices are shown with
   the recommended path first.
 - Toolchain choices cover Node, Python, Java, and containers. Optional runtime
