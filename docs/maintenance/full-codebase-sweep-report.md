@@ -276,3 +276,42 @@ skip warning.
 
 - The old Git profile fields in `.env.example` are still not used by the macOS
   script; leave them until the macOS path is actively rebuilt.
+
+## Iteration 5
+
+### Files and areas inspected
+
+`chooser/src/main.tsx`, command generation helpers, install step definitions,
+config write command generation, and chooser build output.
+
+### Main findings
+
+- `chooser/src/main.tsx` mixed UI rendering with command construction,
+  preview command generation, shell quoting, and install step metadata.
+- Command construction is a stable domain boundary and should be easier to test
+  than the full React app.
+
+### Improvements implemented
+
+- Added `chooser/src/commandBuilder.ts`.
+- Moved repository constants, install step metadata, shell quoting, setup command
+  generation, package preview generation, and config write command generation
+  out of the React entry file.
+- Reduced `chooser/src/main.tsx` by about 190 lines while preserving behavior.
+
+### Tests and checks run
+
+- `npm run build`
+- `./scripts/check.sh`
+
+The root check passed with the known Vite Node version warning and tmux sandbox
+skip warning.
+
+### Commits created
+
+- Pending commit for command builder extraction.
+
+### Deferred items
+
+- Add direct tests for `commandBuilder.ts`.
+- Continue splitting catalog selection helpers from `main.tsx`.
