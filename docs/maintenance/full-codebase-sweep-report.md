@@ -198,3 +198,42 @@ top-level `README.md`, and validation command structure.
 
 - Add shell and dotfile validation to one repo-level command.
 - Consider focused tests for command generation after helper extraction.
+
+## Iteration 3
+
+### Files and areas inspected
+
+`scripts/validate-catalog.mjs`, shell scripts, common dotfiles, JSON config
+files, `README.md`, and validation flow from the repository root.
+
+### Main findings
+
+- Validation still required several manual commands.
+- The local environment does not allow a tmux server to start from this sandbox,
+  so tmux config loading must be optional in automated local checks.
+- The repository text policy can be checked with an ASCII scan over source and
+  docs while excluding generated and dependency folders.
+
+### Improvements implemented
+
+- Added `scripts/check.sh` as a root-level validation command.
+- The script runs chooser checks, shell syntax checks, zsh syntax, Vim config
+  load with network disabled, optional tmux config load, JSON parsing, ASCII
+  text policy scan, and `git diff --check`.
+- Updated top-level README validation instructions to use `./scripts/check.sh`.
+
+### Tests and checks run
+
+- `./scripts/check.sh`
+
+The check passed. Vite printed a Node version warning because this shell used
+Node 22.9.0, while Vite asks for 20.19+ or 22.12+ in the Node 22 line. The
+build still completed with exit code 0.
+
+### Commits created
+
+- Pending commit for root validation.
+
+### Deferred items
+
+- Add command-helper tests after extracting pure chooser command logic.

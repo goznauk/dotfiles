@@ -36,8 +36,7 @@ submodule deployment path.
 Validation:
 
 ```sh
-cd chooser
-npm run check
+./scripts/check.sh
 ```
 
 ## macOS
