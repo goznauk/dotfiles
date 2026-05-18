@@ -30,6 +30,7 @@ Useful variants:
 ./setup.sh ubuntu --yes --skip-tools
 ./setup.sh ubuntu --dry-run --target-version 26.04
 ./setup.sh ubuntu --yes --with-tpm
+./setup.sh ubuntu --yes --no-powerlevel10k
 ./setup.sh ubuntu --yes --apt-packages git,zsh,vim,tmux
 ./setup.sh ubuntu --yes --optional-packages bat,eza,btop
 ./setup.sh ubuntu --yes --no-optional-packages
@@ -54,6 +55,9 @@ Useful variants:
 - Shell tools: `zsh`, oh-my-zsh, Powerlevel10k, syntax highlighting,
   autosuggestions, completions, `direnv`, `ripgrep`, `fd`, `fzf`, `jq`, `tmux`,
   and `vim`.
+- Powerlevel10k is the default zsh prompt. Use `--no-powerlevel10k` to keep
+  oh-my-zsh on its default theme; the installer records that choice in
+  `~/.zshrc.local`.
 - Optional tools if available in apt: `bat`, `eza`, `hyperfine`, `btop`, `yq`,
   `shfmt`, and `nmap`.
 
@@ -71,6 +75,10 @@ ignored.
 The chooser app uses `packages/catalog.json` to map semantic package choices to
 Ubuntu, macOS, Amazon Linux 2023, and RHEL package names. The Ubuntu installer
 can accept the chooser output through `--apt-packages`.
+
+The chooser-generated Ubuntu command can also prepare apt metadata, install
+bootstrap tools, and run the setup inside a `tmux` session. Those wrapper
+options default on in the chooser and are outside the installer flags.
 
 ## Dotfiles
 

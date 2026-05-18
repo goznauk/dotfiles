@@ -65,10 +65,20 @@ export type BuildCommandInput = {
   pythonStrategy: PythonStrategyId;
   javaEnabled: boolean;
   javaStrategy: JavaStrategyId;
+  powerlevel10k: boolean;
+  prepareSystem: boolean;
+  runInTmux: boolean;
   repoRef: string;
 };
 
 export const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
+export const shellDoubleQuote = (value: string) =>
+  `"${value
+    .replaceAll("\\", "\\\\")
+    .replaceAll("\"", "\\\"")
+    .replaceAll("$", "\\$")
+    .replaceAll("`", "\\`")
+    .replaceAll("!", "\\!")}"`;
 
 export function buildCommands(input: BuildCommandInput): CommandSet {
   const activeRef = input.repoRef.trim() || DEFAULT_REF;
@@ -86,6 +96,10 @@ export function buildCommands(input: BuildCommandInput): CommandSet {
     if (!input.stepSelection[step.key]) {
       flags.push(step.skipFlag);
     }
+  }
+
+  if (input.stepSelection.shell && !input.powerlevel10k) {
+    flags.push("--no-powerlevel10k");
   }
 
   if (input.stepSelection.packages) {
@@ -110,10 +124,12 @@ export function buildCommands(input: BuildCommandInput): CommandSet {
   const setupArgs = [input.activeTarget.commandTarget, ...flags].map(shellQuote).join(" ");
   const envPrefix = activeRef === DEFAULT_REF ? "" : `DOTFILES_REPO_REF=${shellQuote(activeRef)} `;
   const url = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${activeRef}/install.sh`;
+  const remoteCommand = `curl -fsSL ${shellQuote(url)} | ${envPrefix}bash -s -- ${setupArgs}`;
+  const localCommand = `./setup.sh ${setupArgs}`;
 
   return {
-    primary: `curl -fsSL ${shellQuote(url)} | ${envPrefix}bash -s -- ${setupArgs}`,
-    local: `./setup.sh ${setupArgs}`,
+    primary: wrapSetupCommand(input.activeOs, remoteCommand, input.prepareSystem, input.runInTmux, "remote"),
+    local: wrapSetupCommand(input.activeOs, localCommand, input.prepareSystem, input.runInTmux, "local"),
     packageCommand: buildPackageCommand(
       input.activeOs,
       input.targetVersion,
@@ -124,6 +140,34 @@ export function buildCommands(input: BuildCommandInput): CommandSet {
       input.javaEnabled ? input.javaStrategy : "none"
     )
   };
+}
+
+function wrapSetupCommand(
+  osId: CommandOsId,
+  command: string,
+  prepareSystem: boolean,
+  runInTmux: boolean,
+  mode: "local" | "remote"
+) {
+  if (osId !== "ubuntu") {
+    return command;
+  }
+
+  const setupCommand = runInTmux ? `tmux new-session -A -s dotfiles ${shellDoubleQuote(command)}` : command;
+  if (!prepareSystem) {
+    return setupCommand;
+  }
+
+  const packages =
+    mode === "remote"
+      ? ["ca-certificates", "curl", "git", ...(runInTmux ? ["tmux"] : [])]
+      : runInTmux
+      ? ["tmux"]
+      : [];
+  const packageInstall =
+    packages.length > 0 ? `sudo apt install -y ${packages.map(shellQuote).join(" ")} && ` : "";
+
+  return `sudo apt update && ${packageInstall}${setupCommand}`;
 }
 
 export function buildPackageCommand(

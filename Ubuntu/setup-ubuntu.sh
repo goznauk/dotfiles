@@ -17,6 +17,7 @@ SKIP_SHELL=0
 SKIP_TOOLS=0
 WITH_TPM=0
 DRY_RUN=0
+POWERLEVEL10K=1
 APT_PACKAGE_MODE="default"
 APT_PACKAGE_CSV=""
 OPTIONAL_PACKAGE_MODE="all"
@@ -41,6 +42,8 @@ Options:
   --skip-tools     Skip uv, rustup, and language runtime setup
   --with-tpm       Install tmux plugin manager
   --dry-run        Print resolved choices and exit without changing the system
+  --no-powerlevel10k
+                  Use the default oh-my-zsh prompt instead of Powerlevel10k
   --target-version VALUE
                   Expected Ubuntu VERSION_ID, for example 26.04
   --apt-packages LIST
@@ -96,6 +99,10 @@ while [[ "$#" -gt 0 ]]; do
       ;;
     --dry-run)
       DRY_RUN=1
+      shift
+      ;;
+    --no-powerlevel10k)
+      POWERLEVEL10K=0
       shift
       ;;
     --target-version)
@@ -497,7 +504,9 @@ install_shell() {
   fi
 
   mkdir -p "$zsh_custom/themes" "$zsh_custom/plugins"
-  clone_or_update https://github.com/romkatv/powerlevel10k.git "$zsh_custom/themes/powerlevel10k"
+  if [[ "$POWERLEVEL10K" -eq 1 ]]; then
+    clone_or_update https://github.com/romkatv/powerlevel10k.git "$zsh_custom/themes/powerlevel10k"
+  fi
   clone_or_update https://github.com/zsh-users/zsh-syntax-highlighting.git "$zsh_custom/plugins/zsh-syntax-highlighting"
   clone_or_update https://github.com/zsh-users/zsh-autosuggestions.git "$zsh_custom/plugins/zsh-autosuggestions"
   clone_or_update https://github.com/zsh-users/zsh-completions.git "$zsh_custom/plugins/zsh-completions"
@@ -524,6 +533,18 @@ install_dotfiles() {
 	email =
 LOCAL_GITCONFIG
     printf 'Created %s\n' "$HOME/.gitconfig.local"
+  fi
+
+  if [[ "$POWERLEVEL10K" -eq 0 ]]; then
+    if [[ ! -e "$HOME/.zshrc.local" ]]; then
+      cat >"$HOME/.zshrc.local" <<'LOCAL_ZSHRC'
+export DOTFILES_POWERLEVEL10K=0
+LOCAL_ZSHRC
+      printf 'Created %s\n' "$HOME/.zshrc.local"
+    elif ! grep -q '^export DOTFILES_POWERLEVEL10K=' "$HOME/.zshrc.local"; then
+      printf '\nexport DOTFILES_POWERLEVEL10K=0\n' >>"$HOME/.zshrc.local"
+      printf 'Updated %s\n' "$HOME/.zshrc.local"
+    fi
   fi
 }
 
@@ -690,6 +711,7 @@ print_plan() {
   printf 'Node strategy: %s\n' "$NODE_STRATEGY"
   printf 'Python strategy: %s\n' "$PYTHON_STRATEGY"
   printf 'Java strategy: %s\n' "$JAVA_STRATEGY"
+  printf 'Powerlevel10k: %s\n' "$([[ "$POWERLEVEL10K" -eq 1 ]] && printf yes || printf no)"
   printf 'Install TPM: %s\n' "$([[ "$WITH_TPM" -eq 1 ]] && printf yes || printf no)"
   printf 'Apt packages: %s\n' "${#packages[@]}"
   if [[ "${#packages[@]}" -gt 0 ]]; then

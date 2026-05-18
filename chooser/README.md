@@ -6,19 +6,24 @@ Current behavior:
 
 - Ubuntu has a real bootstrap command through `install.sh`.
 - macOS, Amazon Linux 2023, and RHEL generate package/config preview commands.
-- The selected OS stays in a compact target selector instead of persistent
-  option cards.
+- The install page starts with four compact target buttons. After choosing a
+  target, it collapses to the selected OS plus version input. Changing it again
+  opens a warning modal.
 - Each OS has an editable version input seeded from the current known release.
 - Package names come from `../packages/catalog.json`.
 - Package groups expand into a compact vertical tree with descriptions and
   resolved package names per OS.
-- Docker uses an on/off toggle. When enabled, strategy choices are shown with
-  the recommended path first.
+- Docker and runtime setup use on/off toggle controls. When enabled, each area
+  shows the chosen strategy and keeps the full choice list behind `Modify`.
 - Toolchain choices cover Node, Python, Java, and containers. Optional runtime
   installs use toggles instead of visible skip cards.
+- Shell preferences include Powerlevel10k and TPM toggles. TPM is still tied to
+  the `.tmux.conf` plugin block.
+- Ubuntu commands can default to `apt update` plus bootstrap package install
+  before setup, and can run setup inside a `tmux` session.
 - Config editors expose `.zshrc`, `.vimrc`, `.tmux.conf`, and `htoprc` as an
   editor-style block view with clickable lines, descriptions, keycaps, reorder
-  controls, and editable block content.
+  controls, reorder warnings, plugin notes, and editable block content.
 
 ## Develop
 

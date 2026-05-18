@@ -3,6 +3,7 @@ import {
   buildCommands,
   buildConfigWriteCommand,
   buildPackageCommand,
+  shellDoubleQuote,
   shellQuote,
   type BuildCommandInput
 } from "./commandBuilder.js";
@@ -44,21 +45,48 @@ const baseInput: BuildCommandInput = {
   pythonStrategy: "system-uv",
   javaEnabled: false,
   javaStrategy: "mise-temurin-21",
+  powerlevel10k: true,
+  prepareSystem: true,
+  runInTmux: true,
   repoRef: DEFAULT_REF
 };
 
 assertEqual(shellQuote("feature/test's"), "'feature/test'\\''s'", "shellQuote escapes single quotes");
+assertEqual(
+  shellDoubleQuote("echo \"$HOME`test`!\""),
+  "\"echo \\\"\\$HOME\\`test\\`\\!\\\"\"",
+  "shellDoubleQuote escapes interactive shell metacharacters"
+);
 
 const defaultCommands = buildCommands(baseInput);
+assertIncludes(defaultCommands.primary, "sudo apt update", "primary command prepares apt metadata first");
+assertIncludes(defaultCommands.primary, "sudo apt install -y 'ca-certificates' 'curl' 'git' 'tmux'", "primary command installs bootstrap tools");
+assertIncludes(defaultCommands.primary, "tmux new-session -A -s dotfiles", "primary command runs inside tmux by default");
 assertIncludes(defaultCommands.primary, "curl -fsSL", "primary command downloads installer");
-assertIncludes(defaultCommands.primary, "'--target-version' '26.04'", "primary command includes target version");
-assertIncludes(defaultCommands.primary, "'--apt-packages' 'git,zsh'", "primary command includes selected packages");
-assertIncludes(defaultCommands.primary, "'--with-tpm'", "primary command includes TPM flag");
 assertNotIncludes(defaultCommands.primary, "DOTFILES_REPO_REF=", "default ref does not need env prefix");
-assertIncludes(defaultCommands.local, "./setup.sh 'ubuntu'", "local command uses setup dispatcher");
+
+const plainCommands = buildCommands({
+  ...baseInput,
+  prepareSystem: false,
+  runInTmux: false
+});
+assertNotIncludes(plainCommands.primary, "sudo apt update", "prepare system can be disabled");
+assertNotIncludes(plainCommands.primary, "tmux new-session", "tmux wrapper can be disabled");
+assertIncludes(plainCommands.local, "./setup.sh 'ubuntu'", "local command uses setup dispatcher");
+assertIncludes(plainCommands.primary, "'--target-version' '26.04'", "primary command includes target version");
+assertIncludes(plainCommands.primary, "'--apt-packages' 'git,zsh'", "primary command includes selected packages");
+assertIncludes(plainCommands.primary, "'--with-tpm'", "primary command includes TPM flag");
+
+const noPowerlevelCommands = buildCommands({
+  ...baseInput,
+  powerlevel10k: false
+});
+assertIncludes(noPowerlevelCommands.primary, "'--no-powerlevel10k'", "Powerlevel10k can be disabled");
 
 const customRefCommands = buildCommands({
   ...baseInput,
+  prepareSystem: false,
+  runInTmux: false,
   repoRef: "feature/test's"
 });
 assertIncludes(

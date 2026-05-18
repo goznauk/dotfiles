@@ -68,6 +68,7 @@ type ConfigBlock = {
   title: string;
   description: string;
   shortcuts: string[];
+  risk?: string;
   enabled: boolean;
   content: string;
 };
@@ -136,6 +137,7 @@ const createConfigBlocks = (raw: string, templates: ConfigBlockTemplate[]): Conf
     title: template.title,
     description: template.description,
     shortcuts: template.shortcuts,
+    risk: template.risk,
     enabled: template.enabled ?? true,
     content: `${lines.slice(template.start - 1, template.end).join("\n")}\n`
   }));
@@ -153,113 +155,117 @@ const configDefinitions: Record<
         id: "prompt",
         title: "Prompt bootstrap",
         description: "Loads the Powerlevel10k instant prompt before the rest of the shell starts.",
+        risk: "Keep this near the top. Moving it below other shell output can break instant prompt startup.",
         shortcuts: [],
         start: 1,
-        end: 7
+        end: 13
       },
       {
         id: "history",
         title: "History settings",
         description: "Keeps a large shared history and avoids repeated duplicate commands.",
         shortcuts: [],
-        start: 9,
-        end: 13
+        start: 15,
+        end: 19
       },
       {
         id: "plugins",
         title: "oh-my-zsh plugins",
         description: "Enables Git helpers, Docker helpers, dotenv loading, completions, and suggestions.",
+        risk: "Keep this before oh-my-zsh loads. Plugins listed after the framework block will not load.",
         shortcuts: [],
-        start: 15,
-        end: 18
+        start: 21,
+        end: 24
       },
       {
         id: "path",
         title: "PATH order",
         description: "Puts local user tools, Cargo tools, and home bin ahead of system paths.",
         shortcuts: [],
-        start: 20,
-        end: 31
+        start: 26,
+        end: 37
       },
       {
         id: "framework",
         title: "Shell framework",
         description: "Loads oh-my-zsh when available and falls back to plain completion setup.",
+        risk: "Runtime hooks, aliases, and plugin arrays assume this framework block stays before them.",
         shortcuts: [],
-        start: 33,
-        end: 38
+        start: 39,
+        end: 44
       },
       {
         id: "runtime-hooks",
         title: "Runtime hooks",
         description: "Activates mise and direnv in interactive shells when those tools exist.",
+        risk: "Keep this after PATH setup so mise and direnv are discovered from the expected locations.",
         shortcuts: [],
-        start: 40,
-        end: 46
+        start: 46,
+        end: 52
       },
       {
         id: "environment",
         title: "Environment",
         description: "Sets locale, editor, visual editor, and GPG tty defaults.",
         shortcuts: [],
-        start: 48,
-        end: 52
+        start: 54,
+        end: 58
       },
       {
         id: "history-search",
         title: "History search keys",
         description: "Makes Up and Down search matching command history from the current prefix.",
         shortcuts: ["Up", "Down"],
-        start: 54,
-        end: 58
+        start: 60,
+        end: 64
       },
       {
         id: "safe-aliases",
         title: "Prompted aliases",
         description: "Keeps raw rm, cp, and mv untouched, and adds explicit prompted variants.",
         shortcuts: ["rmi", "rmri", "cpi", "mvi"],
-        start: 60,
-        end: 65
+        start: 66,
+        end: 71
       },
       {
         id: "navigation",
         title: "Navigation and listings",
         description: "Adds short directory and listing aliases used during terminal work.",
         shortcuts: ["cd..", "l", "ll", "la"],
-        start: 67,
-        end: 72
+        start: 73,
+        end: 78
       },
       {
         id: "tmux-docker",
         title: "tmux and Docker aliases",
         description: "Adds the session attach flow and common Docker Compose shortcuts.",
         shortcuts: ["ta 0", "ta0", "tls", "tn"],
-        start: 74,
-        end: 80
+        start: 80,
+        end: 86
       },
       {
         id: "editors",
         title: "Edit helpers",
         description: "Adds quick commands for editing and applying the shell configuration.",
         shortcuts: ["zshrc", "zshrc_apply"],
-        start: 82,
-        end: 83
+        start: 88,
+        end: 89
       },
       {
         id: "inspection",
         title: "Inspection helpers",
         description: "Adds compact helpers for listening ports, IP addresses, and PATH entries.",
         shortcuts: ["ports", "ipb", "pathls"],
-        start: 85,
-        end: 95
+        start: 91,
+        end: 101
       },
       {
         id: "local-prompt",
         title: "Local prompt file",
         description: "Loads the generated Powerlevel10k local prompt file when it exists.",
         shortcuts: [],
-        start: 97,
-        end: 97
+        start: 103,
+        end: 103
       }
     ])
   },
@@ -319,6 +325,7 @@ const configDefinitions: Record<
         id: "plugins",
         title: "vim-plug setup",
         description: "Bootstraps vim-plug and installs only vim-sensible plus EditorConfig support.",
+        risk: "Keep plugin declarations after core Vim settings and before filetype-specific overrides.",
         shortcuts: [":PlugInstall"],
         start: 48,
         end: 59
@@ -341,6 +348,7 @@ const configDefinitions: Record<
         id: "prefix",
         title: "Prefix and reload",
         description: "Uses Ctrl-A as the prefix and binds reload to prefix plus r.",
+        risk: "Keep prefix bindings before later key bindings so the rest of the file uses the expected prefix.",
         shortcuts: ["C-a", "C-a r"],
         start: 1,
         end: 6
@@ -389,6 +397,7 @@ const configDefinitions: Record<
         id: "tpm",
         title: "TPM block",
         description: "Keeps the tmux plugin manager block available but commented by default.",
+        risk: "Keep TPM plugin declarations near the bottom. TPM expects plugin lines before its run command.",
         shortcuts: ["prefix", "I"],
         start: 61,
         end: 65
@@ -473,6 +482,8 @@ const defaultDockerStrategy = (osId: OsId): DockerStrategyId => {
 const defaultVersionForTarget = (target: OsTarget) =>
   target.defaultVersion || target.versions[0]?.value || "";
 
+const targetShortLabel = (target: OsTarget) => (target.id === "amazon" ? "AL2023" : target.label);
+
 const createInitialTargetVersions = () =>
   Object.fromEntries(
     catalog.osTargets.map((target) => [target.id, defaultVersionForTarget(target)])
@@ -517,8 +528,10 @@ const readInitialExpandedGroups = () => {
 
 function App() {
   const initialOs = readInitialOs();
-  const [activeView, setActiveView] = useState<ViewId>(readInitialView);
+  const initialView = readInitialView();
+  const [activeView, setActiveView] = useState<ViewId>(initialView);
   const [activeOs, setActiveOs] = useState<OsId>(initialOs);
+  const [targetSelected, setTargetSelected] = useState(() => initialParams.has("os") || initialView !== "install");
   const [targetVersions, setTargetVersions] = useState<Record<OsId, string>>(createInitialTargetVersions);
   const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>(
     catalog.packages.filter((item) => item.defaultSelected).map((item) => item.id)
@@ -542,10 +555,15 @@ function App() {
     initialParams.get("docker") === "off" ? false : defaultDockerStrategy(initialOs) !== "none"
   );
   const [nodeStrategy, setNodeStrategy] = useState<NodeStrategyId>("mise");
+  const [nodeEnabled, setNodeEnabled] = useState(true);
   const [pythonStrategy, setPythonStrategy] = useState<PythonStrategyId>("system-uv");
+  const [pythonEnabled, setPythonEnabled] = useState(true);
   const [javaStrategy, setJavaStrategy] = useState<JavaStrategyId>("mise-temurin-21");
   const [javaEnabled, setJavaEnabled] = useState(false);
   const [installTpm, setInstallTpm] = useState(false);
+  const [powerlevel10k, setPowerlevel10k] = useState(true);
+  const [prepareSystem, setPrepareSystem] = useState(true);
+  const [runInTmux, setRunInTmux] = useState(true);
   const [assumeYes, setAssumeYes] = useState(true);
   const [repoRef, setRepoRef] = useState(DEFAULT_REF);
   const [copied, setCopied] = useState<string | null>(null);
@@ -583,10 +601,13 @@ function App() {
         installTpm,
         dockerEnabled,
         dockerStrategy,
-        nodeStrategy,
-        pythonStrategy,
+        nodeStrategy: nodeEnabled ? nodeStrategy : "none",
+        pythonStrategy: pythonEnabled ? pythonStrategy : "none",
         javaEnabled,
         javaStrategy,
+        powerlevel10k,
+        prepareSystem,
+        runInTmux,
         repoRef
       }),
     [
@@ -599,9 +620,14 @@ function App() {
       installTpm,
       javaEnabled,
       javaStrategy,
+      nodeEnabled,
       nodeStrategy,
+      powerlevel10k,
+      prepareSystem,
+      pythonEnabled,
       pythonStrategy,
       repoRef,
+      runInTmux,
       selectedPackageNames,
       stepSelection
     ]
@@ -755,8 +781,10 @@ function App() {
       <TargetSelector
         activeOs={activeOs}
         activeTarget={activeTarget}
+        targetSelected={targetSelected}
         targetVersion={activeTargetVersion}
         onChange={switchOs}
+        onTargetSelected={() => setTargetSelected(true)}
         onVersionChange={(version) =>
           setTargetVersions((current) => ({ ...current, [activeOs]: version }))
         }
@@ -802,32 +830,64 @@ function App() {
             <section className="panel">
               <div className="panel-heading">
                 <div>
+                  <p className="section-label">Shell preferences</p>
+                  <h2>zsh, prompt, and tmux plugins</h2>
+                </div>
+              </div>
+              <div className="preference-grid">
+                <PreferenceToggle
+                  checked={powerlevel10k}
+                  description="Use Powerlevel10k as the default zsh prompt theme."
+                  label="Powerlevel10k prompt"
+                  onChange={setPowerlevel10k}
+                />
+                <PreferenceToggle
+                  checked={installTpm}
+                  description="Install tmux plugin manager. The plugin block still lives in .tmux.conf."
+                  label="Install TPM"
+                  onChange={setInstallTpm}
+                />
+              </div>
+            </section>
+
+            <section className="panel">
+              <div className="panel-heading">
+                <div>
                   <p className="section-label">Toolchains</p>
                   <h2>Containers and language runtimes</h2>
                 </div>
               </div>
-              <DockerStrategyControl
+              <ToolchainControl
                 activeId={dockerStrategy}
+                disabledNote="Container runtime install is disabled. The generated Ubuntu command uses --docker-strategy none."
                 enabled={dockerEnabled}
+                label="Docker"
                 onChange={(value) => setDockerStrategy(value as DockerStrategyId)}
                 onEnabledChange={(enabled) => setDockerEnabled(enabled)}
+                recommendedId="official"
                 strategies={dockerStrategies}
               />
-              <StrategySelector
+              <ToolchainControl
                 activeId={nodeStrategy}
+                disabledNote="Node setup is disabled."
+                enabled={nodeEnabled}
                 label="Node"
                 onChange={(value) => setNodeStrategy(value as NodeStrategyId)}
+                onEnabledChange={setNodeEnabled}
                 recommendedId="mise"
                 strategies={nodeStrategies}
               />
-              <StrategySelector
+              <ToolchainControl
                 activeId={pythonStrategy}
+                disabledNote="Extra Python runtime setup is disabled."
+                enabled={pythonEnabled}
                 label="Python"
                 onChange={(value) => setPythonStrategy(value as PythonStrategyId)}
+                onEnabledChange={setPythonEnabled}
                 recommendedId="system-uv"
                 strategies={pythonStrategies}
               />
-              <OptionalStrategyControl
+              <ToolchainControl
                 activeId={javaStrategy}
                 disabledNote="Java runtime install is disabled. Turn it on for JVM, Gradle, or Kotlin work."
                 enabled={javaEnabled}
@@ -894,16 +954,21 @@ function App() {
             commandSet={commandSet}
             copied={copied}
             dockerEnabled={dockerEnabled}
-            installTpm={installTpm}
             javaEnabled={javaEnabled}
             javaStrategy={javaStrategy}
+            nodeEnabled={nodeEnabled}
+            nodeStrategy={nodeStrategy}
+            prepareSystem={prepareSystem}
+            pythonEnabled={pythonEnabled}
             pythonStrategy={pythonStrategy}
             repoRef={repoRef}
+            runInTmux={runInTmux}
             selectedPackageNames={selectedPackageNames}
             targetVersion={activeTargetVersion}
             setAssumeYes={setAssumeYes}
-            setInstallTpm={setInstallTpm}
+            setPrepareSystem={setPrepareSystem}
             setRepoRef={setRepoRef}
+            setRunInTmux={setRunInTmux}
             onCopy={copyText}
           />
         </section>
@@ -980,10 +1045,16 @@ function App() {
           configContents={configContents}
           dockerEnabled={dockerEnabled}
           dockerStrategy={dockerStrategy}
+          installTpm={installTpm}
           javaEnabled={javaEnabled}
           javaStrategy={javaStrategy}
+          nodeEnabled={nodeEnabled}
           nodeStrategy={nodeStrategy}
+          powerlevel10k={powerlevel10k}
+          prepareSystem={prepareSystem}
+          pythonEnabled={pythonEnabled}
           pythonStrategy={pythonStrategy}
+          runInTmux={runInTmux}
           selectedPackageNames={selectedPackageNames}
           stepSelection={stepSelection}
           targetVersion={activeTargetVersion}
@@ -998,63 +1069,134 @@ function App() {
 function TargetSelector({
   activeOs,
   activeTarget,
+  targetSelected,
   targetVersion,
   onChange,
+  onTargetSelected,
   onVersionChange
 }: {
   activeOs: OsId;
   activeTarget: OsTarget;
+  targetSelected: boolean;
   targetVersion: string;
   onChange: (osId: OsId) => void;
+  onTargetSelected: () => void;
   onVersionChange: (version: string) => void;
 }) {
-  return (
-    <section className="target-bar" aria-label="Operating system">
-      <div>
-        <p className="section-label">Target OS</p>
-        <strong>{activeTarget.label}</strong>
-        <span>
-          {activeTarget.packageManager}
-          {!activeTarget.implemented ? " preview" : ""}
-        </span>
-      </div>
-      <label className="version-field">
-        <span>Version</span>
-        <input
-          list={`versions-${activeTarget.id}`}
-          value={targetVersion}
-          onChange={(event) => onVersionChange(event.target.value)}
-          spellCheck={false}
-        />
-        <datalist id={`versions-${activeTarget.id}`}>
-          {activeTarget.versions.map((version) => (
-            <option key={version.value} value={version.value}>
-              {version.label}
-            </option>
+  const [isChanging, setIsChanging] = useState(false);
+
+  if (!targetSelected) {
+    return (
+      <section className="target-bar target-picker" aria-label="Operating system">
+        <div>
+          <p className="section-label">Target OS</p>
+          <strong>Choose target</strong>
+        </div>
+        <div className="target-options compact" role="group" aria-label="Target OS choices">
+          {catalog.osTargets.map((target) => (
+            <button
+              className={activeOs === target.id ? "target-button active" : "target-button"}
+              key={target.id}
+              type="button"
+              onClick={() => {
+                onChange(target.id);
+                onTargetSelected();
+              }}
+            >
+              <strong>{targetShortLabel(target)}</strong>
+              <span>
+                {defaultVersionForTarget(target)}
+                {!target.implemented ? " preview" : ""}
+              </span>
+            </button>
           ))}
-        </datalist>
-        <small>
-          {(activeTarget.versions.find((version) => version.value === targetVersion) ?? activeTarget.versions[0])
-            ?.note ?? "Custom version"}
-        </small>
-      </label>
-      <div className="target-options" role="group" aria-label="Target OS choices">
-        {catalog.osTargets.map((target) => (
-          <button
-            className={activeOs === target.id ? "target-button active" : "target-button"}
-            key={target.id}
-            type="button"
-            onClick={() => onChange(target.id)}
-          >
-            <strong>{target.label}</strong>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <section className="target-bar" aria-label="Operating system">
+        <div>
+          <p className="section-label">Target OS</p>
+          <button className="target-pill active" type="button" onClick={() => setIsChanging(true)}>
+            <strong>{targetShortLabel(activeTarget)}</strong>
             <span>
-              {target.id === activeOs ? targetVersion : defaultVersionForTarget(target)}
-              {!target.implemented ? " preview" : ""}
+              {activeTarget.packageManager}
+              {!activeTarget.implemented ? " preview" : ""}
             </span>
           </button>
-        ))}
-      </div>
-    </section>
+        </div>
+        <label className="version-field">
+          <span>Version</span>
+          <input
+            list={`versions-${activeTarget.id}`}
+            value={targetVersion}
+            onChange={(event) => onVersionChange(event.target.value)}
+            spellCheck={false}
+          />
+          <datalist id={`versions-${activeTarget.id}`}>
+            {activeTarget.versions.map((version) => (
+              <option key={version.value} value={version.value}>
+                {version.label}
+              </option>
+            ))}
+          </datalist>
+          <small>
+            {(activeTarget.versions.find((version) => version.value === targetVersion) ?? activeTarget.versions[0])
+              ?.note ?? "Custom version"}
+          </small>
+        </label>
+        <button className="target-change-button" type="button" onClick={() => setIsChanging(true)}>
+          Change target
+        </button>
+      </section>
+
+      {isChanging && (
+        <div className="modal-backdrop" role="presentation" onClick={() => setIsChanging(false)}>
+          <section
+            className="target-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="target-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-heading">
+              <div>
+                <p className="section-label">Target OS</p>
+                <h2 id="target-modal-title">Change target OS</h2>
+              </div>
+              <button type="button" onClick={() => setIsChanging(false)}>
+                Close
+              </button>
+            </div>
+            <p className="target-warning">
+              Changing target OS can reset command defaults and package names. Review the command after switching.
+            </p>
+            <div className="target-options compact" role="group" aria-label="Target OS choices">
+              {catalog.osTargets.map((target) => (
+                <button
+                  className={activeOs === target.id ? "target-button active" : "target-button"}
+                  key={target.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(target.id);
+                    setIsChanging(false);
+                  }}
+                >
+                  <strong>{targetShortLabel(target)}</strong>
+                  <span>
+                    {defaultVersionForTarget(target)}
+                    {!target.implemented ? " preview" : ""}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1153,92 +1295,52 @@ function PackageGroupPanel({
   );
 }
 
-function StrategySelector({
-  activeId,
+function ToggleSwitch({
+  checked,
   label,
-  onChange,
-  recommendedId,
-  strategies
+  onChange
 }: {
-  activeId: string;
+  checked: boolean;
   label: string;
-  onChange: (value: string) => void;
-  recommendedId?: string;
-  strategies: Strategy[];
+  onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="strategy-block">
-      <h3>{label}</h3>
-      <div className="strategy-grid">
-        {strategies.map((strategy) => (
-          <button
-            className={activeId === strategy.id ? "strategy-card active" : "strategy-card"}
-            key={strategy.id}
-            type="button"
-            onClick={() => onChange(strategy.id)}
-          >
-            <strong>
-              {strategy.label}
-              {strategy.id === recommendedId && <small>Recommended</small>}
-            </strong>
-            <span>{strategy.description}</span>
-          </button>
-        ))}
-      </div>
-    </div>
+    <button
+      className={checked ? "toggle-switch on" : "toggle-switch"}
+      role="switch"
+      aria-checked={checked}
+      type="button"
+      onClick={() => onChange(!checked)}
+    >
+      <span aria-hidden="true" />
+      <strong>{label}</strong>
+    </button>
   );
 }
 
-function DockerStrategyControl({
-  activeId,
-  enabled,
-  onChange,
-  onEnabledChange,
-  strategies
+function PreferenceToggle({
+  checked,
+  description,
+  label,
+  onChange
 }: {
-  activeId: DockerStrategyId;
-  enabled: boolean;
-  onChange: (value: string) => void;
-  onEnabledChange: (enabled: boolean) => void;
-  strategies: Strategy[];
+  checked: boolean;
+  description: string;
+  label: string;
+  onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="strategy-block">
-      <div className="strategy-heading">
-        <h3>Docker</h3>
-        <label className="toggle-row">
-          <input type="checkbox" checked={enabled} onChange={() => onEnabledChange(!enabled)} />
-          <span>{enabled ? "On" : "Off"}</span>
-        </label>
+    <div className="preference-card">
+      <div>
+        <strong>{label}</strong>
+        <small>{description}</small>
       </div>
-      {enabled && (
-        <div className="strategy-grid">
-          {strategies.map((strategy, index) => (
-            <button
-              className={activeId === strategy.id ? "strategy-card active" : "strategy-card"}
-              key={strategy.id}
-              type="button"
-              onClick={() => onChange(strategy.id)}
-            >
-              <strong>
-                {strategy.label}
-                {index === 0 && <small>Recommended</small>}
-              </strong>
-              <span>{strategy.description}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {!enabled && (
-        <p className="muted compact-note">
-          Container runtime install is disabled. The generated Ubuntu command uses --docker-strategy none.
-        </p>
-      )}
+      <ToggleSwitch checked={checked} label={checked ? "On" : "Off"} onChange={onChange} />
     </div>
   );
 }
 
-function OptionalStrategyControl({
+function ToolchainControl({
   activeId,
   disabledNote,
   enabled,
@@ -1257,16 +1359,32 @@ function OptionalStrategyControl({
   recommendedId?: string;
   strategies: Strategy[];
 }) {
+  const [editing, setEditing] = useState(false);
+  const activeStrategy = strategies.find((strategy) => strategy.id === activeId) ?? strategies[0];
+
   return (
     <div className="strategy-block">
       <div className="strategy-heading">
-        <h3>{label}</h3>
-        <label className="toggle-row">
-          <input type="checkbox" checked={enabled} onChange={() => onEnabledChange(!enabled)} />
-          <span>{enabled ? "On" : "Off"}</span>
-        </label>
+        <div>
+          <h3>{label}</h3>
+          <p className="muted compact-note">{enabled ? activeStrategy.description : disabledNote}</p>
+        </div>
+        <ToggleSwitch checked={enabled} label={enabled ? "On" : "Off"} onChange={onEnabledChange} />
       </div>
-      {enabled ? (
+
+      <div className={enabled ? "selected-strategy-card" : "selected-strategy-card disabled"}>
+        <div>
+          <strong>{enabled ? activeStrategy.label : "Off"}</strong>
+          <small>{enabled ? activeStrategy.description : disabledNote}</small>
+        </div>
+        {enabled && (
+          <button type="button" onClick={() => setEditing((current) => !current)}>
+            {editing ? "Close" : "Modify"}
+          </button>
+        )}
+      </div>
+
+      {enabled && editing && (
         <div className="strategy-grid">
           {strategies.map((strategy) => (
             <button
@@ -1283,8 +1401,6 @@ function OptionalStrategyControl({
             </button>
           ))}
         </div>
-      ) : (
-        <p className="muted compact-note">{disabledNote}</p>
       )}
     </div>
   );
@@ -1400,10 +1516,19 @@ function ConfigBlockEditor({
                 >
                   Down
                 </button>
-                <label className="block-toggle" onClick={(event) => event.stopPropagation()}>
-                  <input type="checkbox" checked={block.enabled} onChange={() => onBlockToggle(block.id)} />
-                  <span>{block.enabled ? "On" : "Off"}</span>
-                </label>
+                <button
+                  className={block.enabled ? "block-toggle on" : "block-toggle"}
+                  role="switch"
+                  aria-checked={block.enabled}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onBlockToggle(block.id);
+                  }}
+                >
+                  <span aria-hidden="true" />
+                  <strong>{block.enabled ? "On" : "Off"}</strong>
+                </button>
               </div>
             </div>
             <div className="editor-lines">
@@ -1443,6 +1568,14 @@ function ConfigBlockEditor({
           </span>
         </div>
         <p className="muted">{activeBlock.description}</p>
+        {activeBlock.risk && <p className="order-warning">{activeBlock.risk}</p>}
+        {(configKey === "vimrc" || configKey === "tmux") && (
+          <p className="plugin-note">
+            {configKey === "vimrc"
+              ? "Vim plugin manager setup is part of the vim-plug block in this rc file."
+              : "tmux plugin manager setup is part of the TPM block in this rc file."}
+          </p>
+        )}
         {activeBlock.shortcuts.length > 0 && <KeycapList keys={activeBlock.shortcuts} />}
         <div className="selected-line-detail">
           <span>Line {selectedLineNumber}</span>
@@ -1494,16 +1627,21 @@ function CommandPanel({
   commandSet,
   copied,
   dockerEnabled,
-  installTpm,
   javaEnabled,
   javaStrategy,
+  nodeEnabled,
+  nodeStrategy,
+  prepareSystem,
+  pythonEnabled,
   pythonStrategy,
   repoRef,
+  runInTmux,
   selectedPackageNames,
   targetVersion,
   setAssumeYes,
-  setInstallTpm,
+  setPrepareSystem,
   setRepoRef,
+  setRunInTmux,
   onCopy
 }: {
   activeTarget: OsTarget;
@@ -1511,16 +1649,21 @@ function CommandPanel({
   commandSet: CommandSet;
   copied: string | null;
   dockerEnabled: boolean;
-  installTpm: boolean;
   javaEnabled: boolean;
   javaStrategy: JavaStrategyId;
+  nodeEnabled: boolean;
+  nodeStrategy: NodeStrategyId;
+  prepareSystem: boolean;
+  pythonEnabled: boolean;
   pythonStrategy: PythonStrategyId;
   repoRef: string;
+  runInTmux: boolean;
   selectedPackageNames: string[];
   targetVersion: string;
   setAssumeYes: (value: boolean) => void;
-  setInstallTpm: (value: boolean) => void;
+  setPrepareSystem: (value: boolean) => void;
   setRepoRef: (value: string) => void;
+  setRunInTmux: (value: boolean) => void;
   onCopy: (key: string, value: string) => void;
 }) {
   return (
@@ -1536,13 +1679,24 @@ function CommandPanel({
         <input type="checkbox" checked={assumeYes} onChange={() => setAssumeYes(!assumeYes)} />
         <span>Use --yes</span>
       </label>
-      <label className="switch-row">
-        <input type="checkbox" checked={installTpm} onChange={() => setInstallTpm(!installTpm)} />
-        <span>Install TPM</span>
-      </label>
+      <div className="command-run-options">
+        <label>
+          <input
+            type="checkbox"
+            checked={prepareSystem}
+            onChange={() => setPrepareSystem(!prepareSystem)}
+          />
+          <span>Update first</span>
+        </label>
+        <label>
+          <input type="checkbox" checked={runInTmux} onChange={() => setRunInTmux(!runInTmux)} />
+          <span>Run in tmux</span>
+        </label>
+      </div>
       <p className="muted compact-note">Target version: {targetVersion || "not set"}</p>
       <p className="muted compact-note">Docker install: {dockerEnabled ? "on" : "off"}</p>
-      <p className="muted compact-note">Python setup: {pythonStrategy}</p>
+      <p className="muted compact-note">Node setup: {nodeEnabled ? nodeStrategy : "off"}</p>
+      <p className="muted compact-note">Python setup: {pythonEnabled ? pythonStrategy : "off"}</p>
       <p className="muted compact-note">Java install: {javaEnabled ? javaStrategy : "off"}</p>
       <div className="mini-summary">
         <strong>{selectedPackageNames.length}</strong>
@@ -1575,10 +1729,16 @@ function SummaryView({
   copied,
   dockerEnabled,
   dockerStrategy,
+  installTpm,
   javaEnabled,
   javaStrategy,
+  nodeEnabled,
   nodeStrategy,
+  powerlevel10k,
+  prepareSystem,
+  pythonEnabled,
   pythonStrategy,
+  runInTmux,
   selectedPackageNames,
   stepSelection,
   targetVersion,
@@ -1590,10 +1750,16 @@ function SummaryView({
   copied: string | null;
   dockerEnabled: boolean;
   dockerStrategy: DockerStrategyId;
+  installTpm: boolean;
   javaEnabled: boolean;
   javaStrategy: JavaStrategyId;
+  nodeEnabled: boolean;
   nodeStrategy: NodeStrategyId;
+  powerlevel10k: boolean;
+  prepareSystem: boolean;
+  pythonEnabled: boolean;
   pythonStrategy: PythonStrategyId;
+  runInTmux: boolean;
   selectedPackageNames: string[];
   stepSelection: Record<InstallStepKey, boolean>;
   targetVersion: string;
@@ -1629,15 +1795,27 @@ function SummaryView({
           </div>
           <div>
             <dt>Node strategy</dt>
-            <dd>{nodeStrategy}</dd>
+            <dd>{nodeEnabled ? nodeStrategy : "off"}</dd>
           </div>
           <div>
             <dt>Python strategy</dt>
-            <dd>{pythonStrategy}</dd>
+            <dd>{pythonEnabled ? pythonStrategy : "off"}</dd>
           </div>
           <div>
             <dt>Java strategy</dt>
             <dd>{javaEnabled ? javaStrategy : "off"}</dd>
+          </div>
+          <div>
+            <dt>Powerlevel10k</dt>
+            <dd>{powerlevel10k ? "on" : "off"}</dd>
+          </div>
+          <div>
+            <dt>TPM</dt>
+            <dd>{installTpm ? "install" : "off"}</dd>
+          </div>
+          <div>
+            <dt>Run wrapper</dt>
+            <dd>{[prepareSystem ? "update first" : "", runInTmux ? "tmux" : ""].filter(Boolean).join(", ") || "off"}</dd>
           </div>
           <div>
             <dt>Selected packages</dt>

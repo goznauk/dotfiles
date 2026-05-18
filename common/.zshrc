@@ -4,7 +4,13 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
 fi
 
 export ZSH="${ZSH:-$HOME/.oh-my-zsh}"
-ZSH_THEME="powerlevel10k/powerlevel10k"
+[[ -r "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
+
+if [[ "${DOTFILES_POWERLEVEL10K:-1}" == "1" ]]; then
+  ZSH_THEME="powerlevel10k/powerlevel10k"
+else
+  ZSH_THEME="${ZSH_THEME:-robbyrussell}"
+fi
 
 HISTSIZE=100000
 SAVEHIST=100000
