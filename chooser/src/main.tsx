@@ -1,4 +1,4 @@
-import { StrictMode, useMemo, useState } from "react";
+import { StrictMode, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import catalogData from "../../packages/catalog.json";
 import tmuxConfigRaw from "../../common/.tmux.conf?raw";
@@ -15,6 +15,7 @@ import "./styles.css";
 
 type OsId = "ubuntu" | "macos" | "amazon" | "rhel";
 type ViewId = "install" | "configs" | "summary";
+type ThemeMode = "light" | "dark";
 type InstallStepKey = "packages" | "shell" | "dotfiles" | "tools";
 type DockerStrategyId = "official" | "distro" | "podman" | "none";
 type NodeStrategyId = "mise" | "nvm" | "none";
@@ -497,6 +498,25 @@ const packageDescriptionFor = (item: CatalogPackage, group: PackageGroup) =>
 const initialParams =
   typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
 
+const readInitialTheme = (): ThemeMode => {
+  if (typeof window === "undefined") {
+    return "light";
+  }
+  const queryTheme = initialParams.get("theme");
+  if (queryTheme === "light" || queryTheme === "dark") {
+    return queryTheme;
+  }
+  try {
+    const stored = window.localStorage.getItem("dotfiles-theme");
+    if (stored === "light" || stored === "dark") {
+      return stored;
+    }
+  } catch {
+    return "light";
+  }
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+};
+
 const readInitialView = (): ViewId => {
   const view = initialParams.get("view");
   return view === "configs" || view === "summary" || view === "install" ? view : "install";
@@ -530,6 +550,7 @@ function App() {
   const initialOs = readInitialOs();
   const initialView = readInitialView();
   const [activeView, setActiveView] = useState<ViewId>(initialView);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(readInitialTheme);
   const [activeOs, setActiveOs] = useState<OsId>(initialOs);
   const [targetSelected, setTargetSelected] = useState(() => initialParams.has("os") || initialView !== "install");
   const [targetVersions, setTargetVersions] = useState<Record<OsId, string>>(createInitialTargetVersions);
@@ -573,6 +594,16 @@ function App() {
   const [activeConfigBlockIds, setActiveConfigBlockIds] =
     useState<Record<ConfigKey, string>>(createInitialActiveBlocks);
   const [draggedBlock, setDraggedBlock] = useState<DraggedBlock>(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = themeMode;
+    document.documentElement.style.colorScheme = themeMode;
+    try {
+      window.localStorage.setItem("dotfiles-theme", themeMode);
+    } catch {
+      // Ignore private browsing or blocked storage.
+    }
+  }, [themeMode]);
 
   const activeTarget = catalog.osTargets.find((target) => target.id === activeOs) ?? catalog.osTargets[0];
   const activeTargetVersion = targetVersions[activeOs] ?? defaultVersionForTarget(activeTarget);
@@ -764,18 +795,21 @@ function App() {
           <p className="section-label">goznauk/dotfiles</p>
           <h1>Build a setup plan.</h1>
         </div>
-        <nav className="view-tabs" aria-label="Chooser sections">
-          {(["install", "configs", "summary"] as ViewId[]).map((viewId) => (
-            <button
-              className={activeView === viewId ? "active" : ""}
-              key={viewId}
-              type="button"
-              onClick={() => setActiveView(viewId)}
-            >
-              {viewId}
-            </button>
-          ))}
-        </nav>
+        <div className="topbar-actions">
+          <ThemeToggle mode={themeMode} onChange={setThemeMode} />
+          <nav className="view-tabs" aria-label="Chooser sections">
+            {(["install", "configs", "summary"] as ViewId[]).map((viewId) => (
+              <button
+                className={activeView === viewId ? "active" : ""}
+                key={viewId}
+                type="button"
+                onClick={() => setActiveView(viewId)}
+              >
+                {viewId}
+              </button>
+            ))}
+          </nav>
+        </div>
       </header>
 
       <TargetSelector
@@ -1195,6 +1229,30 @@ function TargetSelector({
         </div>
       )}
     </>
+  );
+}
+
+function ThemeToggle({
+  mode,
+  onChange
+}: {
+  mode: ThemeMode;
+  onChange: (mode: ThemeMode) => void;
+}) {
+  return (
+    <div className="theme-toggle" role="group" aria-label="Color theme">
+      {(["light", "dark"] as ThemeMode[]).map((theme) => (
+        <button
+          aria-pressed={mode === theme}
+          className={mode === theme ? "active" : ""}
+          key={theme}
+          type="button"
+          onClick={() => onChange(theme)}
+        >
+          {theme}
+        </button>
+      ))}
+    </div>
   );
 }
 

@@ -9,6 +9,8 @@ Current behavior:
 - The install page starts with four compact target buttons. After choosing a
   target, it collapses to the selected OS plus version input. Changing it again
   opens a warning modal.
+- Light and dark themes are available from the header and persist in
+  `localStorage`. `?theme=light` and `?theme=dark` are supported for visual QA.
 - Each OS has an editable version input seeded from the current known release.
 - Package names come from `../packages/catalog.json`.
 - Package groups expand into a compact vertical tree with descriptions and
