@@ -245,48 +245,72 @@ h3 {
   gap: 8px;
 }
 
-.view-tabs button,
-.view-tabs a {
-  text-transform: capitalize;
+.view-tabs {
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 22px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.view-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .view-tabs a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--button-bg);
-  color: var(--text);
-  font-size: 0.88rem;
+  position: relative;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
   font-weight: 750;
-  line-height: 1.2;
-  padding: 0.58rem 0.82rem;
+  line-height: 1;
+  padding: 0.82rem 0.02rem 0.88rem;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .view-tabs a:hover {
-  border-color: var(--border-strong);
-  background: var(--button-hover-bg);
+  color: var(--text);
+}
+
+.view-tabs a::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: transparent;
+  content: "";
 }
 
 .sticky-tabs {
   position: sticky;
   z-index: 15;
   top: 0;
-  margin-bottom: 18px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 8px;
+  margin-bottom: 22px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--app-bg);
+  padding: 0;
 }
 
-.view-tabs .active,
 .config-tabs .active,
 .strategy-card.active {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent-text);
+}
+
+.view-tabs .active {
+  color: var(--accent-text);
+}
+
+.view-tabs .active::after {
+  background: var(--accent);
 }
 
 .target-bar {
@@ -308,6 +332,10 @@ h3 {
 .target-selected-row {
   flex-wrap: nowrap;
   padding-block: 10px;
+}
+
+.target-section .target-bar {
+  margin-bottom: 0;
 }
 
 .target-selected-row .section-label {
@@ -1446,17 +1474,15 @@ kbd {
   }
 
   .view-tabs {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    display: flex;
+    gap: 18px;
     width: 100%;
     min-width: 0;
   }
 
-  .view-tabs button,
   .view-tabs a {
     min-width: 0;
-    width: 100%;
+    width: auto;
     padding-inline: 0.4rem;
   }
 
@@ -1552,7 +1578,7 @@ kbd {
 
 @media (max-width: 420px) {
   .view-tabs {
-    gap: 6px;
+    gap: 14px;
   }
 
   .view-tabs button,

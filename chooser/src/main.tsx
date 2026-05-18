@@ -14,7 +14,7 @@ import {
 import "./styles.css";
 
 type OsId = "ubuntu" | "macos" | "amazon" | "rhel";
-type ViewId = "install" | "configs" | "summary";
+type ViewId = "target" | "packages" | "toolchains" | "configs" | "summary";
 type ThemeMode = "light" | "dark";
 type InstallStepKey = "packages" | "shell" | "dotfiles" | "tools";
 type DockerStrategyId = "official" | "distro" | "podman" | "none";
@@ -519,7 +519,16 @@ const readInitialTheme = (): ThemeMode => {
 
 const readInitialView = (): ViewId => {
   const view = initialParams.get("view");
-  return view === "configs" || view === "summary" || view === "install" ? view : "install";
+  if (view === "install") {
+    return "target";
+  }
+  return view === "target" ||
+    view === "packages" ||
+    view === "toolchains" ||
+    view === "configs" ||
+    view === "summary"
+    ? view
+    : "target";
 };
 
 const readInitialOs = (): OsId => {
@@ -547,6 +556,13 @@ const readInitialExpandedGroups = () => {
 };
 
 const sectionAnchorId = (viewId: ViewId) => `${viewId}-section`;
+const sectionNavItems: Array<{ id: ViewId; label: string }> = [
+  { id: "target", label: "Target" },
+  { id: "packages", label: "Packages" },
+  { id: "toolchains", label: "Toolchains" },
+  { id: "configs", label: "Config" },
+  { id: "summary", label: "Run" }
+];
 
 const scrollSectionIntoView = (viewId: ViewId, behavior: ScrollBehavior = "smooth") => {
   const section = document.getElementById(sectionAnchorId(viewId));
@@ -572,7 +588,7 @@ function App() {
   const [activeView, setActiveView] = useState<ViewId>(initialView);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readInitialTheme);
   const [activeOs, setActiveOs] = useState<OsId>(initialOs);
-  const [targetSelected, setTargetSelected] = useState(() => initialParams.has("os") || initialView !== "install");
+  const [targetSelected, setTargetSelected] = useState(() => initialParams.has("os") || initialView !== "target");
   const [targetVersions, setTargetVersions] = useState<Record<OsId, string>>(createInitialTargetVersions);
   const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>(
     catalog.packages.filter((item) => item.defaultSelected).map((item) => item.id)
@@ -626,9 +642,9 @@ function App() {
   }, [themeMode]);
 
   useEffect(() => {
-    const sections = ["install", "configs", "summary"] as ViewId[];
+    const sections = sectionNavItems.map((item) => item.id);
     const updateActiveView = () => {
-      let currentView: ViewId = "install";
+      let currentView: ViewId = "target";
       for (const viewId of sections) {
         const section = document.getElementById(sectionAnchorId(viewId));
         if (section && section.getBoundingClientRect().top <= 128) {
@@ -640,7 +656,7 @@ function App() {
 
     window.addEventListener("scroll", updateActiveView, { passive: true });
     window.setTimeout(() => {
-      if (initialView !== "install" && scrollSectionIntoView(initialView, "auto")) {
+      if (initialView !== "target" && scrollSectionIntoView(initialView, "auto")) {
         updateActiveView();
       } else {
         updateActiveView();
@@ -846,40 +862,39 @@ function App() {
       </header>
 
       <nav className="view-tabs sticky-tabs" aria-label="Chooser sections">
-        {(["install", "configs", "summary"] as ViewId[]).map((viewId) => {
-          const label = viewId === "configs" ? "Config" : viewId[0].toUpperCase() + viewId.slice(1);
-          return (
-            <a
-              className={activeView === viewId ? "active" : ""}
-              href={`#${sectionAnchorId(viewId)}`}
-              key={viewId}
-              onClick={() => setActiveView(viewId)}
-            >
-              {label}
-            </a>
-          );
-        })}
+        {sectionNavItems.map((item) => (
+          <a
+            className={activeView === item.id ? "active" : ""}
+            href={`#${sectionAnchorId(item.id)}`}
+            key={item.id}
+            onClick={() => setActiveView(item.id)}
+          >
+            {item.label}
+          </a>
+        ))}
       </nav>
 
-      <TargetSelector
-        activeOs={activeOs}
-        activeTarget={activeTarget}
-        targetSelected={targetSelected}
-        targetVersion={activeTargetVersion}
-        onChange={switchOs}
-        onTargetSelected={() => setTargetSelected(true)}
-        onVersionChange={(version) =>
-          setTargetVersions((current) => ({ ...current, [activeOs]: version }))
-        }
-      />
-      {copyError && (
-        <p className="copy-status" role="status">
-          {copyError}
-        </p>
-      )}
-
       <div className="page-sections">
-        <section className="scroll-section" id={sectionAnchorId("install")}>
+        <section className="scroll-section target-section" id={sectionAnchorId("target")}>
+          <TargetSelector
+            activeOs={activeOs}
+            activeTarget={activeTarget}
+            targetSelected={targetSelected}
+            targetVersion={activeTargetVersion}
+            onChange={switchOs}
+            onTargetSelected={() => setTargetSelected(true)}
+            onVersionChange={(version) =>
+              setTargetVersions((current) => ({ ...current, [activeOs]: version }))
+            }
+          />
+          {copyError && (
+            <p className="copy-status" role="status">
+              {copyError}
+            </p>
+          )}
+        </section>
+
+        <section className="scroll-section" id={sectionAnchorId("packages")}>
           <div className="content-stack">
             <section className="panel">
               <div className="panel-heading">
@@ -908,51 +923,6 @@ function App() {
                   </label>
                 ))}
               </div>
-            </section>
-
-            <section className="panel">
-              <div className="panel-heading">
-                <div>
-                  <p className="section-label">Toolchains</p>
-                  <h2>Containers and language runtimes</h2>
-                </div>
-              </div>
-              <ToolchainControl
-                activeId={dockerStrategy}
-                enabled={dockerEnabled}
-                label="Docker"
-                onChange={(value) => setDockerStrategy(value as DockerStrategyId)}
-                onEnabledChange={(enabled) => setDockerEnabled(enabled)}
-                recommendedId="official"
-                strategies={dockerStrategies}
-              />
-              <ToolchainControl
-                activeId={nodeStrategy}
-                enabled={nodeEnabled}
-                label="Node"
-                onChange={(value) => setNodeStrategy(value as NodeStrategyId)}
-                onEnabledChange={setNodeEnabled}
-                recommendedId="mise"
-                strategies={nodeStrategies}
-              />
-              <ToolchainControl
-                activeId={pythonStrategy}
-                enabled={pythonEnabled}
-                label="Python"
-                onChange={(value) => setPythonStrategy(value as PythonStrategyId)}
-                onEnabledChange={setPythonEnabled}
-                recommendedId="system-uv"
-                strategies={pythonStrategies}
-              />
-              <ToolchainControl
-                activeId={javaStrategy}
-                enabled={javaEnabled}
-                label="Java"
-                onChange={(value) => setJavaStrategy(value as JavaStrategyId)}
-                onEnabledChange={setJavaEnabled}
-                recommendedId="mise-temurin-21"
-                strategies={javaStrategies}
-              />
             </section>
 
             <section className="panel">
@@ -1001,6 +971,55 @@ function App() {
                   spellCheck={false}
                 />
               </label>
+            </section>
+          </div>
+        </section>
+
+        <section className="scroll-section" id={sectionAnchorId("toolchains")}>
+          <div className="content-stack">
+            <section className="panel">
+              <div className="panel-heading">
+                <div>
+                  <p className="section-label">Toolchains</p>
+                  <h2>Containers and language runtimes</h2>
+                </div>
+              </div>
+              <ToolchainControl
+                activeId={dockerStrategy}
+                enabled={dockerEnabled}
+                label="Docker"
+                onChange={(value) => setDockerStrategy(value as DockerStrategyId)}
+                onEnabledChange={(enabled) => setDockerEnabled(enabled)}
+                recommendedId="official"
+                strategies={dockerStrategies}
+              />
+              <ToolchainControl
+                activeId={nodeStrategy}
+                enabled={nodeEnabled}
+                label="Node"
+                onChange={(value) => setNodeStrategy(value as NodeStrategyId)}
+                onEnabledChange={setNodeEnabled}
+                recommendedId="mise"
+                strategies={nodeStrategies}
+              />
+              <ToolchainControl
+                activeId={pythonStrategy}
+                enabled={pythonEnabled}
+                label="Python"
+                onChange={(value) => setPythonStrategy(value as PythonStrategyId)}
+                onEnabledChange={setPythonEnabled}
+                recommendedId="system-uv"
+                strategies={pythonStrategies}
+              />
+              <ToolchainControl
+                activeId={javaStrategy}
+                enabled={javaEnabled}
+                label="Java"
+                onChange={(value) => setJavaStrategy(value as JavaStrategyId)}
+                onEnabledChange={setJavaEnabled}
+                recommendedId="mise-temurin-21"
+                strategies={javaStrategies}
+              />
             </section>
           </div>
         </section>
