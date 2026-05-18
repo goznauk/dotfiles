@@ -546,6 +546,26 @@ const readInitialExpandedGroups = () => {
   return Object.fromEntries(catalog.groups.map((group) => [group.id, groups.has(group.id)]));
 };
 
+const sectionAnchorId = (viewId: ViewId) => `${viewId}-section`;
+
+const scrollSectionIntoView = (viewId: ViewId, behavior: ScrollBehavior = "smooth") => {
+  const section = document.getElementById(sectionAnchorId(viewId));
+  if (!section) {
+    return false;
+  }
+
+  if (typeof section.scrollIntoView === "function") {
+    section.scrollIntoView({ behavior, block: "start" });
+    return true;
+  }
+
+  const anchor = `#${sectionAnchorId(viewId)}`;
+  if (window.location.hash !== anchor) {
+    window.location.hash = anchor;
+  }
+  return true;
+};
+
 function App() {
   const initialOs = readInitialOs();
   const initialView = readInitialView();
@@ -604,6 +624,31 @@ function App() {
       // Ignore private browsing or blocked storage.
     }
   }, [themeMode]);
+
+  useEffect(() => {
+    const sections = ["install", "configs", "summary"] as ViewId[];
+    const updateActiveView = () => {
+      let currentView: ViewId = "install";
+      for (const viewId of sections) {
+        const section = document.getElementById(sectionAnchorId(viewId));
+        if (section && section.getBoundingClientRect().top <= 128) {
+          currentView = viewId;
+        }
+      }
+      setActiveView(currentView);
+    };
+
+    window.addEventListener("scroll", updateActiveView, { passive: true });
+    window.setTimeout(() => {
+      if (initialView !== "install" && scrollSectionIntoView(initialView, "auto")) {
+        updateActiveView();
+      } else {
+        updateActiveView();
+      }
+    }, 0);
+
+    return () => window.removeEventListener("scroll", updateActiveView);
+  }, [initialView]);
 
   const activeTarget = catalog.osTargets.find((target) => target.id === activeOs) ?? catalog.osTargets[0];
   const activeTargetVersion = targetVersions[activeOs] ?? defaultVersionForTarget(activeTarget);
@@ -797,20 +842,24 @@ function App() {
         </div>
         <div className="topbar-actions">
           <ThemeToggle mode={themeMode} onChange={setThemeMode} />
-          <nav className="view-tabs" aria-label="Chooser sections">
-            {(["install", "configs", "summary"] as ViewId[]).map((viewId) => (
-              <button
-                className={activeView === viewId ? "active" : ""}
-                key={viewId}
-                type="button"
-                onClick={() => setActiveView(viewId)}
-              >
-                {viewId}
-              </button>
-            ))}
-          </nav>
         </div>
       </header>
+
+      <nav className="view-tabs sticky-tabs" aria-label="Chooser sections">
+        {(["install", "configs", "summary"] as ViewId[]).map((viewId) => {
+          const label = viewId === "configs" ? "Config" : viewId[0].toUpperCase() + viewId.slice(1);
+          return (
+            <a
+              className={activeView === viewId ? "active" : ""}
+              href={`#${sectionAnchorId(viewId)}`}
+              key={viewId}
+              onClick={() => setActiveView(viewId)}
+            >
+              {label}
+            </a>
+          );
+        })}
+      </nav>
 
       <TargetSelector
         activeOs={activeOs}
@@ -829,8 +878,8 @@ function App() {
         </p>
       )}
 
-      {activeView === "install" && (
-        <section className="main-grid">
+      <div className="page-sections">
+        <section className="scroll-section" id={sectionAnchorId("install")}>
           <div className="content-stack">
             <section className="panel">
               <div className="panel-heading">
@@ -864,36 +913,12 @@ function App() {
             <section className="panel">
               <div className="panel-heading">
                 <div>
-                  <p className="section-label">Shell preferences</p>
-                  <h2>zsh, prompt, and tmux plugins</h2>
-                </div>
-              </div>
-              <div className="preference-grid">
-                <PreferenceToggle
-                  checked={powerlevel10k}
-                  description="Use Powerlevel10k as the default zsh prompt theme."
-                  label="Powerlevel10k prompt"
-                  onChange={setPowerlevel10k}
-                />
-                <PreferenceToggle
-                  checked={installTpm}
-                  description="Install tmux plugin manager. The plugin block still lives in .tmux.conf."
-                  label="Install TPM"
-                  onChange={setInstallTpm}
-                />
-              </div>
-            </section>
-
-            <section className="panel">
-              <div className="panel-heading">
-                <div>
                   <p className="section-label">Toolchains</p>
                   <h2>Containers and language runtimes</h2>
                 </div>
               </div>
               <ToolchainControl
                 activeId={dockerStrategy}
-                disabledNote="Container runtime install is disabled. The generated Ubuntu command uses --docker-strategy none."
                 enabled={dockerEnabled}
                 label="Docker"
                 onChange={(value) => setDockerStrategy(value as DockerStrategyId)}
@@ -903,7 +928,6 @@ function App() {
               />
               <ToolchainControl
                 activeId={nodeStrategy}
-                disabledNote="Node setup is disabled."
                 enabled={nodeEnabled}
                 label="Node"
                 onChange={(value) => setNodeStrategy(value as NodeStrategyId)}
@@ -913,7 +937,6 @@ function App() {
               />
               <ToolchainControl
                 activeId={pythonStrategy}
-                disabledNote="Extra Python runtime setup is disabled."
                 enabled={pythonEnabled}
                 label="Python"
                 onChange={(value) => setPythonStrategy(value as PythonStrategyId)}
@@ -923,7 +946,6 @@ function App() {
               />
               <ToolchainControl
                 activeId={javaStrategy}
-                disabledNote="Java runtime install is disabled. Turn it on for JVM, Gradle, or Kotlin work."
                 enabled={javaEnabled}
                 label="Java"
                 onChange={(value) => setJavaStrategy(value as JavaStrategyId)}
@@ -981,35 +1003,9 @@ function App() {
               </label>
             </section>
           </div>
-
-          <CommandPanel
-            activeTarget={activeTarget}
-            assumeYes={assumeYes}
-            commandSet={commandSet}
-            copied={copied}
-            dockerEnabled={dockerEnabled}
-            javaEnabled={javaEnabled}
-            javaStrategy={javaStrategy}
-            nodeEnabled={nodeEnabled}
-            nodeStrategy={nodeStrategy}
-            prepareSystem={prepareSystem}
-            pythonEnabled={pythonEnabled}
-            pythonStrategy={pythonStrategy}
-            repoRef={repoRef}
-            runInTmux={runInTmux}
-            selectedPackageNames={selectedPackageNames}
-            targetVersion={activeTargetVersion}
-            setAssumeYes={setAssumeYes}
-            setPrepareSystem={setPrepareSystem}
-            setRepoRef={setRepoRef}
-            setRunInTmux={setRunInTmux}
-            onCopy={copyText}
-          />
         </section>
-      )}
 
-      {activeView === "configs" && (
-        <section className="main-grid">
+        <section className="main-grid scroll-section" id={sectionAnchorId("configs")}>
           <div className="content-stack">
             <section className="panel">
               <div className="panel-heading">
@@ -1030,6 +1026,13 @@ function App() {
                   </button>
                 ))}
               </div>
+              <ConfigPreferencePanel
+                activeConfig={activeConfig}
+                installTpm={installTpm}
+                powerlevel10k={powerlevel10k}
+                setInstallTpm={setInstallTpm}
+                setPowerlevel10k={setPowerlevel10k}
+              />
               <ConfigBlockEditor
                 activeBlockId={activeConfigBlockIds[activeConfig]}
                 blocks={configBlocks[activeConfig]}
@@ -1070,32 +1073,54 @@ function App() {
             </button>
           </aside>
         </section>
-      )}
 
-      {activeView === "summary" && (
-        <SummaryView
-          activeTarget={activeTarget}
-          commandSet={commandSet}
-          configContents={configContents}
-          dockerEnabled={dockerEnabled}
-          dockerStrategy={dockerStrategy}
-          installTpm={installTpm}
-          javaEnabled={javaEnabled}
-          javaStrategy={javaStrategy}
-          nodeEnabled={nodeEnabled}
-          nodeStrategy={nodeStrategy}
-          powerlevel10k={powerlevel10k}
-          prepareSystem={prepareSystem}
-          pythonEnabled={pythonEnabled}
-          pythonStrategy={pythonStrategy}
-          runInTmux={runInTmux}
-          selectedPackageNames={selectedPackageNames}
-          stepSelection={stepSelection}
-          targetVersion={activeTargetVersion}
-          onCopy={copyText}
-          copied={copied}
-        />
-      )}
+        <section className="main-grid scroll-section" id={sectionAnchorId("summary")}>
+          <div className="content-stack">
+            <SummaryView
+              activeTarget={activeTarget}
+              configContents={configContents}
+              dockerEnabled={dockerEnabled}
+              dockerStrategy={dockerStrategy}
+              installTpm={installTpm}
+              javaEnabled={javaEnabled}
+              javaStrategy={javaStrategy}
+              nodeEnabled={nodeEnabled}
+              nodeStrategy={nodeStrategy}
+              powerlevel10k={powerlevel10k}
+              prepareSystem={prepareSystem}
+              pythonEnabled={pythonEnabled}
+              pythonStrategy={pythonStrategy}
+              runInTmux={runInTmux}
+              selectedPackageNames={selectedPackageNames}
+              stepSelection={stepSelection}
+              targetVersion={activeTargetVersion}
+            />
+          </div>
+          <CommandPanel
+            activeTarget={activeTarget}
+            assumeYes={assumeYes}
+            commandSet={commandSet}
+            copied={copied}
+            dockerEnabled={dockerEnabled}
+            javaEnabled={javaEnabled}
+            javaStrategy={javaStrategy}
+            nodeEnabled={nodeEnabled}
+            nodeStrategy={nodeStrategy}
+            prepareSystem={prepareSystem}
+            pythonEnabled={pythonEnabled}
+            pythonStrategy={pythonStrategy}
+            repoRef={repoRef}
+            runInTmux={runInTmux}
+            selectedPackageNames={selectedPackageNames}
+            targetVersion={activeTargetVersion}
+            setAssumeYes={setAssumeYes}
+            setPrepareSystem={setPrepareSystem}
+            setRepoRef={setRepoRef}
+            setRunInTmux={setRunInTmux}
+            onCopy={copyText}
+          />
+        </section>
+      </div>
     </main>
   );
 }
@@ -1239,19 +1264,57 @@ function ThemeToggle({
   mode: ThemeMode;
   onChange: (mode: ThemeMode) => void;
 }) {
+  const nextMode: ThemeMode = mode === "dark" ? "light" : "dark";
+
   return (
-    <div className="theme-toggle" role="group" aria-label="Color theme">
-      {(["light", "dark"] as ThemeMode[]).map((theme) => (
-        <button
-          aria-pressed={mode === theme}
-          className={mode === theme ? "active" : ""}
-          key={theme}
-          type="button"
-          onClick={() => onChange(theme)}
-        >
-          {theme}
-        </button>
-      ))}
+    <button
+      aria-label={`Switch to ${nextMode} theme`}
+      className={`theme-icon-toggle ${mode}`}
+      title={`Switch to ${nextMode} theme`}
+      type="button"
+      onClick={() => onChange(nextMode)}
+    >
+      <span className="theme-icon" aria-hidden="true" />
+      <span className="visually-hidden">{mode} theme</span>
+    </button>
+  );
+}
+
+function ConfigPreferencePanel({
+  activeConfig,
+  installTpm,
+  powerlevel10k,
+  setInstallTpm,
+  setPowerlevel10k
+}: {
+  activeConfig: ConfigKey;
+  installTpm: boolean;
+  powerlevel10k: boolean;
+  setInstallTpm: (checked: boolean) => void;
+  setPowerlevel10k: (checked: boolean) => void;
+}) {
+  if (activeConfig !== "zshrc" && activeConfig !== "tmux") {
+    return null;
+  }
+
+  return (
+    <div className="config-preferences">
+      {activeConfig === "zshrc" && (
+        <PreferenceToggle
+          checked={powerlevel10k}
+          description="Use Powerlevel10k as the generated zsh prompt theme."
+          label="Powerlevel10k prompt"
+          onChange={setPowerlevel10k}
+        />
+      )}
+      {activeConfig === "tmux" && (
+        <PreferenceToggle
+          checked={installTpm}
+          description="Install tmux plugin manager for the TPM block in .tmux.conf."
+          label="Install TPM"
+          onChange={setInstallTpm}
+        />
+      )}
     </div>
   );
 }
@@ -1398,7 +1461,6 @@ function PreferenceToggle({
 
 function ToolchainControl({
   activeId,
-  disabledNote,
   enabled,
   label,
   onChange,
@@ -1407,7 +1469,6 @@ function ToolchainControl({
   strategies
 }: {
   activeId: string;
-  disabledNote: string;
   enabled: boolean;
   label: string;
   onChange: (value: string) => void;
@@ -1417,28 +1478,34 @@ function ToolchainControl({
 }) {
   const [editing, setEditing] = useState(false);
   const activeStrategy = strategies.find((strategy) => strategy.id === activeId) ?? strategies[0];
+  const setEnabled = (checked: boolean) => {
+    if (!checked) {
+      setEditing(false);
+    }
+    onEnabledChange(checked);
+  };
 
   return (
     <div className="strategy-block">
       <div className="strategy-heading">
         <div>
           <h3>{label}</h3>
-          <p className="muted compact-note">{enabled ? activeStrategy.description : disabledNote}</p>
+          {enabled && <p className="muted compact-note">{activeStrategy.description}</p>}
         </div>
-        <ToggleSwitch checked={enabled} label={enabled ? "On" : "Off"} onChange={onEnabledChange} />
+        <ToggleSwitch checked={enabled} label={enabled ? "On" : "Off"} onChange={setEnabled} />
       </div>
 
-      <div className={enabled ? "selected-strategy-card" : "selected-strategy-card disabled"}>
-        <div>
-          <strong>{enabled ? activeStrategy.label : "Off"}</strong>
-          <small>{enabled ? activeStrategy.description : disabledNote}</small>
-        </div>
-        {enabled && (
+      {enabled && (
+        <div className="selected-strategy-card">
+          <div>
+            <strong>{activeStrategy.label}</strong>
+            <small>{activeStrategy.description}</small>
+          </div>
           <button type="button" onClick={() => setEditing((current) => !current)}>
             {editing ? "Close" : "Modify"}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {enabled && editing && (
         <div className="strategy-grid">
@@ -1780,9 +1847,7 @@ function CommandPanel({
 
 function SummaryView({
   activeTarget,
-  commandSet,
   configContents,
-  copied,
   dockerEnabled,
   dockerStrategy,
   installTpm,
@@ -1797,13 +1862,10 @@ function SummaryView({
   runInTmux,
   selectedPackageNames,
   stepSelection,
-  targetVersion,
-  onCopy
+  targetVersion
 }: {
   activeTarget: OsTarget;
-  commandSet: CommandSet;
   configContents: Record<ConfigKey, string>;
-  copied: string | null;
   dockerEnabled: boolean;
   dockerStrategy: DockerStrategyId;
   installTpm: boolean;
@@ -1819,7 +1881,6 @@ function SummaryView({
   selectedPackageNames: string[];
   stepSelection: Record<InstallStepKey, boolean>;
   targetVersion: string;
-  onCopy: (key: string, value: string) => void;
 }) {
   const configLineCounts = (Object.keys(configContents) as ConfigKey[]).map((key) => ({
     key,
@@ -1902,17 +1963,6 @@ function SummaryView({
             </li>
           ))}
         </ul>
-      </section>
-      <section className="panel command-summary">
-        <p className="section-label">Final command</p>
-        <CommandBlock
-          title={activeTarget.implemented ? "Bootstrap command" : "Package command"}
-          command={activeTarget.implemented ? commandSet.primary : commandSet.packageCommand}
-          copied={copied === "summary-command"}
-          onCopy={() =>
-            onCopy("summary-command", activeTarget.implemented ? commandSet.primary : commandSet.packageCommand)
-          }
-        />
       </section>
     </section>
   );
