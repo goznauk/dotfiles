@@ -847,23 +847,22 @@ const TargetSelector = ({
             {!activeTarget.implemented ? " preview" : ""}
           </span>
         </button>
-        <label className="version-field target-version-field" title={versionNote}>
+        <div className="version-field target-version-field" title={versionNote}>
           <span>Version</span>
-          <input
-            list={`versions-${activeTarget.id}`}
-            value={targetVersion}
-            onChange={(event) => onVersionChange(event.target.value)}
-            aria-label={`${targetShortLabel(activeTarget)} version`}
-            spellCheck={false}
-          />
-          <datalist id={`versions-${activeTarget.id}`}>
+          <div className="version-button-group" role="group" aria-label={`${targetShortLabel(activeTarget)} version`}>
             {activeTarget.versions.map((version) => (
-              <option key={version.value} value={version.value}>
+              <button
+                className={version.value === targetVersion ? "version-button active" : "version-button"}
+                key={version.value}
+                title={version.note}
+                type="button"
+                onClick={() => onVersionChange(version.value)}
+              >
                 {version.label}
-              </option>
+              </button>
             ))}
-          </datalist>
-        </label>
+          </div>
+        </div>
         <button className="target-change-button" type="button" onClick={() => setIsChanging(true)}>
           Change target
         </button>

@@ -54,6 +54,12 @@ const packageIds = catalog.packages.map((item) => item.id);
 const agentToolIds = catalog.agentTools.map((item) => item.id);
 const developerToolIds = catalog.developerTools.map((item) => item.id);
 const nodePackageManagerIds = catalog.nodePackageManagers.map((item) => item.id);
+const requiredPackageExpectations = [
+  {
+    id: "utilities.chromium",
+    ubuntuPackage: "chromium-browser"
+  }
+];
 
 reportDuplicate("osTargets", osIds);
 reportDuplicate("groups", groupIds);
@@ -64,6 +70,18 @@ reportDuplicate("nodePackageManagers", nodePackageManagerIds);
 reportDuplicate("Ubuntu core packages", ubuntuCore);
 reportDuplicate("Ubuntu optional packages", ubuntuOptional);
 reportDuplicate("Ubuntu package lists", [...ubuntuCore, ...ubuntuOptional]);
+
+for (const expectedPackage of requiredPackageExpectations) {
+  const item = catalog.packages.find((packageItem) => packageItem.id === expectedPackage.id);
+  requireValue(Boolean(item), `Catalog is missing required package ${expectedPackage.id}`);
+  if (item) {
+    requireValue(item.defaultSelected === true, `Required package ${expectedPackage.id} must be selected by default`);
+    requireValue(
+      item.packages.ubuntu.includes(expectedPackage.ubuntuPackage),
+      `Required package ${expectedPackage.id} must install ${expectedPackage.ubuntuPackage} on Ubuntu`
+    );
+  }
+}
 
 for (const target of catalog.osTargets) {
   requireValue(target.id, "OS target is missing id");

@@ -1,6 +1,7 @@
 # Optional apt packages. Missing packages are skipped with a warning.
 btop
 bat
+chromium-browser
 eza
 git-extras
 hyperfine

@@ -50,9 +50,10 @@ Use this before changing package data or command generation.
 - macOS, Amazon Linux 2023, and RHEL preview commands.
 - Light and dark theme toggle.
 - One scrolling flow: Target, Packages, Toolchains, Config, Run.
-- Version input for each OS target.
+- Version buttons for each OS target.
 - Sudo user setting for the setup command.
 - Package search and package group expansion.
+- Chromium browser package option for Ubuntu web testing.
 - Docker or Podman strategy choices.
 - Node, Python, and Java strategy choices.
 - Node package manager choices. `pnpm` is the default.

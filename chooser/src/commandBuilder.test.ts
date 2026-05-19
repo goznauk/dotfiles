@@ -122,6 +122,15 @@ assertIncludes(
 );
 assertIncludes(plainCommands.primary, "'--with-tpm'", "primary command includes TPM flag");
 
+const ubuntuLtsCommands = buildCommands({
+  ...baseInput,
+  prepareSystem: false,
+  runInTmux: false,
+  targetVersion: "24.04"
+});
+assertIncludes(ubuntuLtsCommands.primary, "'--target-version' '24.04'", "Ubuntu 24.04 can be selected");
+assertNotIncludes(ubuntuLtsCommands.primary, "'--target-version' '26.04'", "Ubuntu 24.04 replaces the default version");
+
 const customAdminCommands = buildCommands({
   ...baseInput,
   adminUserName: "ozz"

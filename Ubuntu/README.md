@@ -116,7 +116,8 @@ Missing required packages stop the apt install. Missing optional packages are
 skipped with a warning.
 
 The installer enables the Ubuntu `universe` repository before apt package
-install. Some common developer packages, including `eza`, live there on Ubuntu.
+install. Some common developer packages, including `chromium-browser` and `eza`,
+live there on Ubuntu.
 
 The chooser uses `packages/catalog.json` to map one package choice to different
 package names on Ubuntu, macOS, Amazon Linux 2023, and RHEL. Ubuntu commands can

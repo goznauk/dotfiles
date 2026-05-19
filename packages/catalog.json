@@ -598,6 +598,19 @@
       "note": "Fast tldr command client kept from the original package list. Not mapped for AL2023 or RHEL defaults."
     },
     {
+      "id": "utilities.chromium",
+      "group": "utilities",
+      "label": "Chromium browser",
+      "defaultSelected": true,
+      "packages": {
+        "ubuntu": ["chromium-browser"],
+        "macos": [],
+        "amazon": [],
+        "rhel": []
+      },
+      "note": "Browser for web testing. On Ubuntu this apt package installs the Chromium snap through a transitional package."
+    },
+    {
       "id": "utilities.misc",
       "group": "utilities",
       "label": "Miscellaneous utilities",

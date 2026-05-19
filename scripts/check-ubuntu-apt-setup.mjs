@@ -9,6 +9,7 @@ const optionalPackages = readFileSync(join(rootDir, "Ubuntu/packages/optional.tx
   .map((line) => line.trim())
   .filter((line) => line && !line.startsWith("#"));
 const setupScript = readFileSync(join(rootDir, "Ubuntu/setup-ubuntu.sh"), "utf8");
+const universePackages = ["chromium-browser", "eza"];
 
 const assert = (condition, message) => {
   if (!condition) {
@@ -16,10 +17,10 @@ const assert = (condition, message) => {
   }
 };
 
-if (optionalPackages.includes("eza")) {
+if (universePackages.some((packageName) => optionalPackages.includes(packageName))) {
   assert(
     setupScript.includes("enable_ubuntu_universe"),
-    "Ubuntu installer must enable universe before installing eza."
+    "Ubuntu installer must enable universe before installing universe packages."
   );
 
   const installFunctionMatch = setupScript.match(/install_apt_packages\(\) \{[\s\S]*?\n\}/);
