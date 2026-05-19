@@ -623,9 +623,33 @@ mise_use_global() {
   fi
 }
 
+mise_enable_idiomatic_version_file() {
+  install_mise || return 1
+  local tool="$1"
+  local mise_bin="$HOME/.local/bin/mise"
+  local mise_cmd=()
+
+  if command -v mise >/dev/null 2>&1; then
+    mise_cmd=(mise)
+  elif [[ -x "$mise_bin" ]]; then
+    mise_cmd=("$mise_bin")
+  else
+    return 1
+  fi
+
+  local current_settings
+  current_settings="$("${mise_cmd[@]}" settings get idiomatic_version_file_enable_tools 2>/dev/null || true)"
+  if [[ "$current_settings" == *"$tool"* ]]; then
+    return 0
+  fi
+
+  "${mise_cmd[@]}" settings add idiomatic_version_file_enable_tools "$tool" >/dev/null 2>&1 || true
+}
+
 install_mise_and_node() {
   log 'Installing Node LTS through mise'
   mise_use_global node@lts || warn 'Node LTS setup through mise skipped.'
+  mise_enable_idiomatic_version_file node
 }
 
 install_nvm_and_node() {
@@ -653,6 +677,7 @@ install_python_runtime() {
     mise)
       log 'Installing Python through mise'
       mise_use_global python@latest || warn 'Python setup through mise skipped.'
+      mise_enable_idiomatic_version_file python
       ;;
     none)
       log 'Skipping extra Python runtime setup'

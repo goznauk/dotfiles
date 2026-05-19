@@ -107,6 +107,11 @@ const noPackageCommands = buildCommands({
 });
 assertIncludes(noPackageCommands.primary, "'--skip-apt'", "empty selected package list skips apt");
 assertIncludes(noPackageCommands.packageCommand, "# No apt packages selected", "empty package preview is explicit");
+assertIncludes(
+  noPackageCommands.packageCommand,
+  "mise settings add idiomatic_version_file_enable_tools node",
+  "mise node preview enables idiomatic version files"
+);
 
 const skippedPackageStep = buildCommands({
   ...baseInput,

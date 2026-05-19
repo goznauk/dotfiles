@@ -228,7 +228,7 @@ const nodePreviewLine = (strategy: NodeStrategyId) => {
   if (strategy === NODE_STRATEGY_IDS.NVM) {
     return "curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash";
   }
-  return "curl -fsSL https://mise.run | sh && mise use -g node@lts";
+  return "curl -fsSL https://mise.run | sh && mise use -g node@lts && mise settings add idiomatic_version_file_enable_tools node";
 };
 
 const pythonPreviewLine = (strategy: PythonStrategyId) => {
@@ -236,7 +236,7 @@ const pythonPreviewLine = (strategy: PythonStrategyId) => {
     return "# Extra Python runtime setup skipped";
   }
   if (strategy === PYTHON_STRATEGY_IDS.MISE) {
-    return "curl -fsSL https://mise.run | sh && mise use -g python@latest";
+    return "curl -fsSL https://mise.run | sh && mise use -g python@latest && mise settings add idiomatic_version_file_enable_tools python";
   }
   return "curl -LsSf https://astral.sh/uv/install.sh | sh";
 };

@@ -233,8 +233,8 @@ const configDefinitions: Record<ConfigKey, { title: string; path: string; mkdir?
       },
       {
         id: "runtime-hooks",
-        title: "Runtime hooks",
-        description: "Activates mise and direnv in interactive shells when those tools exist.",
+        title: "mise and direnv hooks",
+        description: "Activates mise shims and direnv in interactive zsh when those tools exist.",
         kind: CONFIG_BLOCK_KINDS.SIDE_EFFECT,
         risk: "Keep this after PATH setup so mise and direnv are discovered from the expected locations.",
         shortcuts: [],

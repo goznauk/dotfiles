@@ -23,6 +23,14 @@ One-shot:
 ./setup.sh ubuntu --yes
 ```
 
+Local full recommended run:
+
+```sh
+sudo apt update
+sudo apt install -y tmux
+tmux new-session -A -s dotfiles './setup.sh ubuntu --yes'
+```
+
 Useful variants:
 
 ```sh
@@ -48,6 +56,8 @@ Useful variants:
 - Python through Ubuntu packages, with `python3-venv`, `pipx`, and `uv`.
 - Rust through `rustup`, including `rustfmt` and `clippy`.
 - Node LTS through `mise` by default, or `nvm` with `--node-strategy nvm`.
+  The zsh config activates mise for interactive shells, and the installer
+  enables `.nvmrc` and `.node-version` support for mise-managed Node.
 - Container runtime through `--docker-strategy`: Docker official repository,
   Ubuntu packages, Podman compatibility, or none.
 - Target release check through `--target-version`, which warns before

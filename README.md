@@ -16,6 +16,14 @@ For a one-shot install:
 ./setup.sh ubuntu --yes
 ```
 
+For the local full recommended run with the same wrapper style as the chooser:
+
+```sh
+sudo apt update
+sudo apt install -y tmux
+tmux new-session -A -s dotfiles './setup.sh ubuntu --yes'
+```
+
 See [Ubuntu setup](./Ubuntu/README.md) for package details and system notes.
 
 ## Chooser
