@@ -958,6 +958,11 @@ input[type="checkbox"] {
   margin: 0 0 14px;
 }
 
+.config-file-select,
+.block-select-field {
+  display: none;
+}
+
 .config-preferences .preference-card {
   max-width: 520px;
 }
@@ -967,11 +972,17 @@ input[type="checkbox"] {
   margin-bottom: 10px;
   overflow-x: auto;
   padding-bottom: 4px;
-  scrollbar-width: none;
+  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-width: thin;
 }
 
 .config-tabs::-webkit-scrollbar {
-  display: none;
+  height: 4px;
+}
+
+.config-tabs::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--border-strong);
 }
 
 .config-tabs button {
@@ -1552,6 +1563,36 @@ kbd {
   font-weight: 750;
 }
 
+.block-select-field {
+  margin: 2px 0 12px;
+}
+
+.config-file-select,
+.block-select-field {
+  gap: 6px;
+}
+
+.config-file-select span,
+.block-select-field span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.config-file-select select,
+.block-select-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  padding: 0.5rem 0.7rem;
+  font-weight: 750;
+}
+
 .editor-label {
   display: block;
   margin-top: 14px;
@@ -1626,7 +1667,7 @@ kbd {
 }
 
 .block-editor {
-  min-height: 320px;
+  min-height: 0;
   margin-top: 8px;
 }
 
@@ -1919,21 +1960,32 @@ kbd {
     gap: 6px;
   }
 
-  .config-tabs {
-    gap: 6px;
-    scroll-snap-type: x proximity;
+  .config-file-select,
+  .block-select-field {
+    display: grid;
   }
 
-  .config-tabs button {
-    scroll-snap-align: start;
+  .config-file-select {
+    margin-bottom: 10px;
+  }
+
+  .config-tabs {
+    display: none;
   }
 
   .config-preferences .preference-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
     padding: 10px;
   }
 
+  .config-preferences .preference-card small {
+    display: none;
+  }
+
   .config-preferences .toggle-switch {
-    align-self: flex-start;
+    align-self: center;
   }
 
   .block-detail {
@@ -1949,7 +2001,6 @@ kbd {
   }
 
   .block-editor {
-    min-height: 250px;
     font-size: 0.78rem;
   }
 

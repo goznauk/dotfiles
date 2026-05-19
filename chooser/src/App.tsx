@@ -241,7 +241,7 @@ export const App = () => {
   }, [themeMode]);
 
   useEffect(() => {
-    configTabRefs.current[activeConfig]?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    configTabRefs.current[activeConfig]?.scrollIntoView({ block: "nearest", inline: "center" });
   }, [activeConfig]);
 
   useEffect(() => {
@@ -733,17 +733,29 @@ export const App = () => {
                   <h2>Edit generated config content</h2>
                 </div>
               </div>
+              <label className="config-file-select">
+                <span>Config file</span>
+                <select value={activeConfig} onChange={(event) => setActiveConfig(event.target.value as ConfigKey)}>
+                  {configKeys.map((key) => (
+                    <option key={key} value={key}>
+                      {configDefinitions[key].title}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <div className="config-tabs" role="tablist" aria-label="Config files">
                 {configKeys.map((key) => (
                   <button
                     aria-controls="config-editor-panel"
                     aria-selected={activeConfig === key}
                     className={activeConfig === key ? "active" : ""}
+                    id={`config-tab-${key}`}
                     key={key}
                     ref={(element) => {
                       configTabRefs.current[key] = element;
                     }}
                     role="tab"
+                    tabIndex={activeConfig === key ? 0 : -1}
                     type="button"
                     onKeyDown={(event) => handleConfigTabKeyDown(event, key)}
                     onClick={() => setActiveConfig(key)}
@@ -765,6 +777,7 @@ export const App = () => {
                 configKey={activeConfig}
                 draggedBlock={draggedBlock}
                 editorId="config-editor-panel"
+                labelledBy={`config-tab-${activeConfig}`}
                 onActiveBlockChange={(blockId) =>
                   setActiveConfigBlockIds((current) => ({ ...current, [activeConfig]: blockId }))
                 }
@@ -1518,6 +1531,7 @@ const ConfigBlockEditor = ({
   configKey,
   draggedBlock,
   editorId,
+  labelledBy,
   onActiveBlockChange,
   onBlockContentChange,
   onBlockDrop,
@@ -1531,6 +1545,7 @@ const ConfigBlockEditor = ({
   configKey: ConfigKey;
   draggedBlock: DraggedBlock;
   editorId: string;
+  labelledBy: string;
   onActiveBlockChange: (blockId: string) => void;
   onBlockContentChange: (blockId: string, content: string) => void;
   onBlockDrop: (blockId: string) => void;
@@ -1544,9 +1559,11 @@ const ConfigBlockEditor = ({
   const activePluginNote = pluginNoteFor(configKey, activeBlock.id);
   const enabledBlockCount = blocks.filter((block) => block.enabled).length;
   const blockLineCount = (block: ConfigBlock) => block.content.trimEnd().split(/\r?\n/).length || 1;
+  const activeBlockLineCount = blockLineCount(activeBlock);
+  const editorRows = Math.min(18, Math.max(7, activeBlockLineCount + 3));
 
   return (
-    <div className="config-builder" id={editorId}>
+    <div className="config-builder" id={editorId} role="tabpanel" aria-labelledby={labelledBy}>
       <section className="block-detail" aria-labelledby={`block-editor-heading-${activeBlock.id}`}>
         <div className="block-detail-heading">
           <div>
@@ -1561,7 +1578,7 @@ const ConfigBlockEditor = ({
               className={activeBlock.enabled ? "block-toggle detail-toggle on" : "block-toggle detail-toggle"}
               role="switch"
               aria-checked={activeBlock.enabled}
-              aria-label={`${activeBlock.enabled ? "Disable" : "Enable"} ${activeBlock.title} block`}
+              aria-label={`${activeBlock.title} block`}
               type="button"
               onClick={() => onBlockToggle(activeBlock.id)}
             >
@@ -1570,11 +1587,22 @@ const ConfigBlockEditor = ({
             </button>
           </div>
         </div>
+        <label className="block-select-field">
+          <span>Block</span>
+          <select value={activeBlock.id} onChange={(event) => onActiveBlockChange(event.target.value)}>
+            {blocks.map((block, index) => (
+              <option key={block.id} value={block.id}>
+                {index + 1}. {block.title}
+                {block.enabled ? "" : " (off)"}
+              </option>
+            ))}
+          </select>
+        </label>
         <p className="muted">{activeBlock.description}</p>
         <div className="block-meta-row">
           <span className={`block-kind-pill kind-${activeBlock.kind}`}>{blockKindLabels[activeBlock.kind]}</span>
           <span className="meta-chip">{blockKindDescriptions[activeBlock.kind]}</span>
-          <span className="meta-chip">{blockLineCount(activeBlock)} lines</span>
+          <span className="meta-chip">{activeBlockLineCount} lines</span>
         </div>
         {activeBlock.risk && <p className="order-warning">{activeBlock.risk}</p>}
         {activePluginNote && <p className="plugin-note">{activePluginNote}</p>}
@@ -1586,23 +1614,34 @@ const ConfigBlockEditor = ({
           aria-label={`Edit ${activeBlock.title} block content`}
           className="block-editor"
           id={`block-editor-${activeBlock.id}`}
+          rows={editorRows}
           spellCheck={false}
           value={activeBlock.content}
-          wrap="off"
+          wrap="soft"
           onChange={(event) => onBlockContentChange(activeBlock.id, event.target.value)}
         />
-        <div className="block-actions" aria-label={`${activeBlock.title} block actions`}>
-          <button type="button" onClick={() => onBlockMove(activeBlock.id, -1)} disabled={activeIndex === 0}>
+        <div className="block-actions" role="group" aria-label={`${activeBlock.title} block actions`}>
+          <button
+            aria-label={`Move ${activeBlock.title} block up`}
+            type="button"
+            onClick={() => onBlockMove(activeBlock.id, -1)}
+            disabled={activeIndex === 0}
+          >
             Move up
           </button>
           <button
+            aria-label={`Move ${activeBlock.title} block down`}
             type="button"
             onClick={() => onBlockMove(activeBlock.id, 1)}
             disabled={activeIndex === blocks.length - 1}
           >
             Move down
           </button>
-          <button type="button" onClick={() => onBlockReset(activeBlock.id)}>
+          <button
+            aria-label={`Reset ${activeBlock.title} block content`}
+            type="button"
+            onClick={() => onBlockReset(activeBlock.id)}
+          >
             Reset block
           </button>
         </div>
