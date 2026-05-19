@@ -256,10 +256,10 @@ link_file() {
 
 load_package_file() {
   local file="$1"
-  local -n packages_ref="$2"
+  local -n output_packages="$2"
   local line
 
-  packages_ref=()
+  output_packages=()
 
   if [[ ! -r "$file" ]]; then
     printf 'Package file not found: %s\n' "$file" >&2
@@ -269,7 +269,7 @@ load_package_file() {
   while IFS= read -r line || [[ -n "$line" ]]; do
     [[ "$line" =~ ^[[:space:]]*$ ]] && continue
     [[ "$line" =~ ^[[:space:]]*# ]] && continue
-    packages_ref+=("$line")
+    output_packages+=("$line")
   done <"$file"
 }
 
@@ -287,7 +287,7 @@ split_csv() {
 }
 
 filter_optional_packages() {
-  local -n packages_ref="$1"
+  local -n optional_packages="$1"
   local selected=()
   local filtered=()
   local allowed
@@ -299,7 +299,7 @@ filter_optional_packages() {
       return 0
       ;;
     none)
-      packages_ref=()
+      optional_packages=()
       return 0
       ;;
     selected)
@@ -310,7 +310,7 @@ filter_optional_packages() {
   for package in "${selected[@]}"; do
     [[ -z "$package" ]] && continue
     found=0
-    for allowed in "${packages_ref[@]}"; do
+    for allowed in "${optional_packages[@]}"; do
       if [[ "$package" == "$allowed" ]]; then
         filtered+=("$package")
         found=1
@@ -322,12 +322,12 @@ filter_optional_packages() {
     fi
   done
 
-  packages_ref=("${filtered[@]}")
+  optional_packages=("${filtered[@]}")
 }
 
 append_csv_packages() {
   local input="$1"
-  local -n packages_ref="$2"
+  local -n output_packages="$2"
   local parsed=()
   local package
 
@@ -335,40 +335,41 @@ append_csv_packages() {
   split_csv "$input" parsed
   for package in "${parsed[@]}"; do
     [[ -z "$package" ]] && continue
-    packages_ref+=("$package")
+    output_packages+=("$package")
   done
 }
 
 resolve_apt_packages() {
-  local -n packages_ref="$1"
+  local output_name="$1"
+  local -n output_packages="$output_name"
   local core_packages=()
   local optional_packages=()
 
-  packages_ref=()
+  output_packages=()
 
   case "$APT_PACKAGE_MODE" in
     default)
       load_package_file "$PACKAGE_DIR/core.txt" core_packages
       load_package_file "$PACKAGE_DIR/optional.txt" optional_packages || warn 'No optional apt package file loaded.'
       filter_optional_packages optional_packages
-      packages_ref=("${core_packages[@]}" "${optional_packages[@]}")
+      output_packages=("${core_packages[@]}" "${optional_packages[@]}")
       ;;
     selected)
-      append_csv_packages "$APT_PACKAGE_CSV" packages_ref
+      append_csv_packages "$APT_PACKAGE_CSV" "$output_name"
       ;;
   esac
 
-  append_csv_packages "$EXTRA_PACKAGE_CSV" packages_ref
-  dedupe_packages packages_ref
+  append_csv_packages "$EXTRA_PACKAGE_CSV" "$output_name"
+  dedupe_packages "$output_name"
 }
 
 dedupe_packages() {
-  local -n packages_ref="$1"
+  local -n output_packages="$1"
   local seen=" "
   local deduped=()
   local package
 
-  for package in "${packages_ref[@]}"; do
+  for package in "${output_packages[@]}"; do
     [[ -z "$package" ]] && continue
     if [[ "$seen" != *" $package "* ]]; then
       deduped+=("$package")
@@ -376,7 +377,7 @@ dedupe_packages() {
     fi
   done
 
-  packages_ref=("${deduped[@]}")
+  output_packages=("${deduped[@]}")
 }
 
 detect_ubuntu() {
