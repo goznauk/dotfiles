@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import catalogData from "../../packages/catalog.json";
+import {
+  catalog,
+  defaultVersionForTarget,
+  packageDescriptionFor,
+  packageNamesForOs,
+  type OsTarget,
+  type PackageGroup,
+  type Strategy
+} from "./catalog";
 import { DEFAULT_REF, buildCommands, buildConfigWriteCommand, installSteps, type CommandSet } from "./commandBuilder";
 import {
   blockKindDescriptions,
@@ -34,60 +42,6 @@ import {
 
 type DraggedBlock = { configKey: ConfigKey; blockId: string } | null;
 
-type OsVersion = {
-  value: string;
-  label: string;
-  note: string;
-};
-
-type OsTarget = {
-  id: OsId;
-  label: string;
-  packageManager: string;
-  commandTarget: string;
-  implemented: boolean;
-  note: string;
-  defaultVersion: string;
-  versions: OsVersion[];
-};
-
-type PackageGroup = {
-  id: string;
-  title: string;
-  description: string;
-  defaultEnabled: boolean;
-};
-
-type CatalogPackage = {
-  id: string;
-  group: string;
-  label: string;
-  defaultSelected: boolean;
-  packages: Record<OsId, string[]>;
-  note?: string;
-};
-
-type Strategy = {
-  id: string;
-  label: string;
-  description: string;
-  defaults?: OsId[];
-};
-
-type Catalog = {
-  osTargets: OsTarget[];
-  groups: PackageGroup[];
-  packages: CatalogPackage[];
-  strategies: {
-    docker: Strategy[];
-    node: Strategy[];
-    python: Strategy[];
-    java: Strategy[];
-  };
-};
-
-const catalog = catalogData as Catalog;
-
 const splitCustomPackages = (value: string) =>
   value
     .split(/[,\s]+/)
@@ -101,8 +55,6 @@ const defaultDockerStrategy = (osId: OsId): DockerStrategyId => {
   return (strategy?.id as DockerStrategyId | undefined) ?? DOCKER_STRATEGY_IDS.NONE;
 };
 
-const defaultVersionForTarget = (target: OsTarget) => target.defaultVersion || target.versions[0]?.value || "";
-
 const targetShortLabel = (target: OsTarget) => (target.id === OS_IDS.AMAZON ? "AL2023" : target.label);
 
 const createInitialTargetVersions = () =>
@@ -110,10 +62,6 @@ const createInitialTargetVersions = () =>
     OsId,
     string
   >;
-
-const packageNamesForOs = (item: CatalogPackage, osId: OsId) => item.packages[osId] ?? [];
-
-const packageDescriptionFor = (item: CatalogPackage, group: PackageGroup) => item.note ?? group.description;
 
 const initialParams =
   typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
