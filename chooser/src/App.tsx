@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   catalog,
   defaultVersionForTarget,
@@ -140,12 +140,12 @@ const readInitialExpandedGroups = () => {
 };
 
 const sectionAnchorId = (viewId: ViewId) => `${viewId}-section`;
-const sectionNavItems: Array<{ id: ViewId; label: string }> = [
-  { id: VIEW_IDS.TARGET, label: "Target" },
-  { id: VIEW_IDS.PACKAGES, label: "Packages" },
-  { id: VIEW_IDS.TOOLCHAINS, label: "Toolchains" },
-  { id: VIEW_IDS.CONFIGS, label: "Config" },
-  { id: VIEW_IDS.SUMMARY, label: "Run" }
+const sectionNavItems: Array<{ id: ViewId; label: string; step: string }> = [
+  { id: VIEW_IDS.TARGET, label: "Target", step: "1" },
+  { id: VIEW_IDS.PACKAGES, label: "Packages", step: "2" },
+  { id: VIEW_IDS.TOOLCHAINS, label: "Toolchains", step: "3" },
+  { id: VIEW_IDS.CONFIGS, label: "Config", step: "4" },
+  { id: VIEW_IDS.SUMMARY, label: "Run", step: "5" }
 ];
 
 const scrollSectionIntoView = (viewId: ViewId, behavior: ScrollBehavior = "smooth") => {
@@ -459,6 +459,7 @@ export const App = () => {
     }
     updateConfigBlock(blockId, (block) => ({ ...block, content: originalBlock.content }));
   };
+  const copiedMessage = copied ? `Copied ${copied.replace(/-/g, " ")}.` : "";
 
   return (
     <main className="app-shell">
@@ -466,6 +467,7 @@ export const App = () => {
         <div>
           <p className="section-label">goznauk/dotfiles</p>
           <h1>Build a setup plan.</h1>
+          <p className="hero-copy">Choose a target, packages, toolchains, and configs, then copy the command.</p>
         </div>
         <div className="topbar-actions">
           <ThemeToggle mode={themeMode} onChange={setThemeMode} />
@@ -477,13 +479,20 @@ export const App = () => {
           <a
             className={activeView === item.id ? "active" : ""}
             href={`#${sectionAnchorId(item.id)}`}
+            aria-current={activeView === item.id ? "step" : undefined}
             key={item.id}
             onClick={() => setActiveView(item.id)}
           >
-            {item.label}
+            <span className="view-tab-step" aria-hidden="true">
+              {item.step}
+            </span>
+            <span>{item.label}</span>
           </a>
         ))}
       </nav>
+      <p className="visually-hidden" role="status" aria-live="polite">
+        {copiedMessage}
+      </p>
 
       <div className="page-sections">
         <section className="scroll-section target-section" id={sectionAnchorId(VIEW_IDS.TARGET)}>
@@ -514,8 +523,8 @@ export const App = () => {
             <section className="panel">
               <div className="panel-heading">
                 <div>
-                  <p className="section-label">Install groups</p>
-                  <h2>Choose what the command does</h2>
+                  <p className="section-label">Command steps</p>
+                  <h2>Choose setup actions</h2>
                 </div>
               </div>
               <div className="step-grid">
@@ -666,6 +675,7 @@ export const App = () => {
               <div className="config-tabs">
                 {(Object.keys(configDefinitions) as ConfigKey[]).map((key) => (
                   <button
+                    aria-pressed={activeConfig === key}
                     className={activeConfig === key ? "active" : ""}
                     key={key}
                     type="button"
@@ -723,7 +733,7 @@ export const App = () => {
           </aside>
         </section>
 
-        <section className="main-grid scroll-section" id={sectionAnchorId(VIEW_IDS.SUMMARY)}>
+        <section className="main-grid scroll-section summary-section" id={sectionAnchorId(VIEW_IDS.SUMMARY)}>
           <div className="content-stack">
             <SummaryView
               activeTarget={activeTarget}
@@ -802,9 +812,52 @@ const TargetSelector = ({
   onVersionChange: (version: string) => void;
 }) => {
   const [isChanging, setIsChanging] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const lastTriggerRef = useRef<HTMLButtonElement | null>(null);
   const versionNote =
     (activeTarget.versions.find((version) => version.value === targetVersion) ?? activeTarget.versions[0])?.note ??
     "Custom version";
+  const openTargetDialog = (trigger: HTMLButtonElement) => {
+    lastTriggerRef.current = trigger;
+    setIsChanging(true);
+  };
+  const closeTargetDialog = () => {
+    setIsChanging(false);
+    window.setTimeout(() => lastTriggerRef.current?.focus(), 0);
+  };
+  const handleDialogKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeTargetDialog();
+      return;
+    }
+    if (event.key !== "Tab") {
+      return;
+    }
+    const focusable = Array.from(
+      event.currentTarget.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((element) => !element.hasAttribute("disabled"));
+    if (focusable.length === 0) {
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  useEffect(() => {
+    if (isChanging) {
+      closeButtonRef.current?.focus();
+    }
+  }, [isChanging]);
 
   if (!targetSelected) {
     return (
@@ -816,6 +869,7 @@ const TargetSelector = ({
         <div className="target-options compact" role="group" aria-label="Target OS choices">
           {catalog.osTargets.map((target) => (
             <button
+              aria-pressed={activeOs === target.id}
               className={activeOs === target.id ? "target-button active" : "target-button"}
               key={target.id}
               type="button"
@@ -840,7 +894,13 @@ const TargetSelector = ({
     <>
       <section className="target-bar target-selected-row" aria-label="Operating system">
         <p className="section-label">Target OS</p>
-        <button className="target-pill active" type="button" onClick={() => setIsChanging(true)}>
+        <button
+          aria-haspopup="dialog"
+          aria-label={`Current target ${targetShortLabel(activeTarget)}, change target`}
+          className="target-pill active"
+          type="button"
+          onClick={(event) => openTargetDialog(event.currentTarget)}
+        >
           <strong>{targetShortLabel(activeTarget)}</strong>
           <span>
             {activeTarget.packageManager}
@@ -852,6 +912,7 @@ const TargetSelector = ({
           <div className="version-button-group" role="group" aria-label={`${targetShortLabel(activeTarget)} version`}>
             {activeTarget.versions.map((version) => (
               <button
+                aria-pressed={version.value === targetVersion}
                 className={version.value === targetVersion ? "version-button active" : "version-button"}
                 key={version.value}
                 title={version.note}
@@ -863,18 +924,24 @@ const TargetSelector = ({
             ))}
           </div>
         </div>
-        <button className="target-change-button" type="button" onClick={() => setIsChanging(true)}>
+        <button
+          aria-haspopup="dialog"
+          className="target-change-button"
+          type="button"
+          onClick={(event) => openTargetDialog(event.currentTarget)}
+        >
           Change target
         </button>
       </section>
 
       {isChanging && (
-        <div className="modal-backdrop" role="presentation" onClick={() => setIsChanging(false)}>
+        <div className="modal-backdrop" role="presentation" onClick={closeTargetDialog}>
           <section
             className="target-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="target-modal-title"
+            onKeyDown={handleDialogKeyDown}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="modal-heading">
@@ -882,7 +949,7 @@ const TargetSelector = ({
                 <p className="section-label">Target OS</p>
                 <h2 id="target-modal-title">Change target OS</h2>
               </div>
-              <button type="button" onClick={() => setIsChanging(false)}>
+              <button ref={closeButtonRef} type="button" onClick={closeTargetDialog}>
                 Close
               </button>
             </div>
@@ -892,12 +959,13 @@ const TargetSelector = ({
             <div className="target-options compact" role="group" aria-label="Target OS choices">
               {catalog.osTargets.map((target) => (
                 <button
+                  aria-pressed={activeOs === target.id}
                   className={activeOs === target.id ? "target-button active" : "target-button"}
                   key={target.id}
                   type="button"
                   onClick={() => {
                     onChange(target.id);
-                    setIsChanging(false);
+                    closeTargetDialog();
                   }}
                 >
                   <strong>{targetShortLabel(target)}</strong>
@@ -950,7 +1018,7 @@ const UserSettingsPanel = ({
         <strong>Sudo user</strong>
         <span className="muted compact-note">Leave blank to use the login user that runs the setup command.</span>
       </div>
-      <ToggleSwitch checked={adminUserEnabled} label={adminUserEnabled ? "On" : "Off"} onChange={onEnabledChange} />
+      <ToggleSwitch checked={adminUserEnabled} label="Sudo user setup" onChange={onEnabledChange} />
       <label className="version-field user-name-field">
         <span>User name</span>
         <input
@@ -1099,10 +1167,12 @@ const PackageGroupPanel = ({
 const ToggleSwitch = ({
   checked,
   label,
+  stateLabel = checked ? "On" : "Off",
   onChange
 }: {
   checked: boolean;
   label: string;
+  stateLabel?: string;
   onChange: (checked: boolean) => void;
 }) => {
   return (
@@ -1110,11 +1180,12 @@ const ToggleSwitch = ({
       className={checked ? "toggle-switch on" : "toggle-switch"}
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       type="button"
       onClick={() => onChange(!checked)}
     >
       <span aria-hidden="true" />
-      <strong>{label}</strong>
+      <strong aria-hidden="true">{stateLabel}</strong>
     </button>
   );
 };
@@ -1136,7 +1207,7 @@ const PreferenceToggle = ({
         <strong>{label}</strong>
         <small>{description}</small>
       </div>
-      <ToggleSwitch checked={checked} label={checked ? "On" : "Off"} onChange={onChange} />
+      <ToggleSwitch checked={checked} label={label} onChange={onChange} />
     </div>
   );
 };
@@ -1174,7 +1245,7 @@ const ToolchainControl = ({
           <h3>{label}</h3>
           {enabled && <p className="muted compact-note">{activeStrategy.description}</p>}
         </div>
-        <ToggleSwitch checked={enabled} label={enabled ? "On" : "Off"} onChange={setEnabled} />
+        <ToggleSwitch checked={enabled} label={`${label} setup`} onChange={setEnabled} />
       </div>
 
       {enabled && (
@@ -1184,7 +1255,7 @@ const ToolchainControl = ({
             <small>{activeStrategy.description}</small>
           </div>
           <button type="button" onClick={() => setEditing((current) => !current)}>
-            {editing ? "Close" : "Modify"}
+            {editing ? "Done" : "Change"}
           </button>
         </div>
       )}
@@ -1193,6 +1264,7 @@ const ToolchainControl = ({
         <div className="strategy-grid">
           {strategies.map((strategy) => (
             <button
+              aria-pressed={activeId === strategy.id}
               className={activeId === strategy.id ? "strategy-card active" : "strategy-card"}
               key={strategy.id}
               type="button"
@@ -1243,13 +1315,14 @@ const NodePackageManagerChooser = ({
           <small>{activeManager.description}</small>
         </div>
         <button type="button" onClick={() => setEditing((current) => !current)}>
-          {editing ? "Close" : "Modify"}
+          {editing ? "Done" : "Change"}
         </button>
       </div>
       {editing && (
         <div className="strategy-grid">
           {managers.map((manager) => (
             <button
+              aria-pressed={activeId === manager.id}
               className={activeId === manager.id ? "strategy-card active" : "strategy-card"}
               key={manager.id}
               type="button"
@@ -1301,7 +1374,7 @@ const AgentToolChooser = ({
             </div>
             <ToggleSwitch
               checked={selectedIds.includes(tool.id)}
-              label={selectedIds.includes(tool.id) ? "On" : "Off"}
+              label={tool.label}
               onChange={() => onToggle(tool.id)}
             />
           </div>
@@ -1338,7 +1411,7 @@ const DeveloperToolChooser = ({
             </div>
             <ToggleSwitch
               checked={selectedIds.includes(tool.id)}
-              label={selectedIds.includes(tool.id) ? "On" : "Off"}
+              label={tool.label}
               onChange={() => onToggle(tool.id)}
             />
           </div>
@@ -1463,6 +1536,7 @@ const ConfigBlockEditor = ({
                   className={block.enabled ? "block-toggle on" : "block-toggle"}
                   role="switch"
                   aria-checked={block.enabled}
+                  aria-label={`${block.title} block`}
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
@@ -1481,6 +1555,8 @@ const ConfigBlockEditor = ({
                 const lineActive = selectedLine?.blockId === block.id && selectedLine.lineIndex === lineIndex;
                 return (
                   <button
+                    aria-label={`Select line ${lineNumber}: ${line || "blank line"}`}
+                    aria-pressed={lineActive}
                     className={lineActive ? "code-line active" : "code-line"}
                     key={lineKey}
                     type="button"
