@@ -148,6 +148,13 @@ const sectionNavItems: Array<{ id: ViewId; label: string; step: string }> = [
   { id: VIEW_IDS.SUMMARY, label: "Run", step: "5" }
 ];
 
+const copiedLabels: Record<string, string> = {
+  "config-command": "write command",
+  "config-content": "config file content",
+  "local-command": "already cloned command",
+  "primary-command": "bootstrap command"
+};
+
 const scrollSectionIntoView = (viewId: ViewId, behavior: ScrollBehavior = "smooth") => {
   const section = document.getElementById(sectionAnchorId(viewId));
   if (!section) {
@@ -213,6 +220,7 @@ export const App = () => {
   const [assumeYes, setAssumeYes] = useState(true);
   const [repoRef, setRepoRef] = useState(DEFAULT_REF);
   const [copied, setCopied] = useState<string | null>(null);
+  const [copyAnnouncementCount, setCopyAnnouncementCount] = useState(0);
   const [copyError, setCopyError] = useState<string | null>(null);
   const [activeConfig, setActiveConfig] = useState<ConfigKey>(readInitialConfig);
   const [configBlocks, setConfigBlocks] = useState<Record<ConfigKey, ConfigBlock[]>>(createInitialConfigBlocks);
@@ -356,6 +364,22 @@ export const App = () => {
         .filter((item) => item.totalCount > 0),
     [selectedPackageIds]
   );
+  const normalizedPackageQuery = query.trim().toLowerCase();
+  const packageSearchHasResults = useMemo(() => {
+    if (!normalizedPackageQuery) {
+      return true;
+    }
+    return catalog.groups.some((group) =>
+      catalog.packages
+        .filter((item) => item.group === group.id)
+        .some((item) => {
+          const packageNames = packageNamesForOs(item, activeOs).join(" ");
+          return `${group.title} ${item.label} ${item.id} ${packageNames}`
+            .toLowerCase()
+            .includes(normalizedPackageQuery);
+        })
+    );
+  }, [activeOs, normalizedPackageQuery]);
   const selectedAgentTools = useMemo(
     () => catalog.agentTools.filter((tool) => selectedAgentToolIds.includes(tool.id)),
     [selectedAgentToolIds]
@@ -404,10 +428,12 @@ export const App = () => {
     try {
       await navigator.clipboard.writeText(value);
       setCopied(key);
+      setCopyAnnouncementCount((current) => current + 1);
       setCopyError(null);
       window.setTimeout(() => setCopied(null), 1400);
     } catch {
       setCopied(null);
+      setCopyAnnouncementCount((current) => current + 1);
       setCopyError("Copy failed. Select the command text and copy it manually.");
       window.setTimeout(() => setCopyError(null), 5000);
     }
@@ -459,7 +485,8 @@ export const App = () => {
     }
     updateConfigBlock(blockId, (block) => ({ ...block, content: originalBlock.content }));
   };
-  const copiedMessage = copied ? `Copied ${copied.replace(/-/g, " ")}.` : "";
+  const copiedMessage = copied ? `Copied ${copiedLabels[copied] ?? copied.replace(/-/g, " ")}.` : "";
+  const statusMessage = copyError ?? copiedMessage;
 
   return (
     <main className="app-shell">
@@ -490,9 +517,12 @@ export const App = () => {
           </a>
         ))}
       </nav>
-      <p className="visually-hidden" role="status" aria-live="polite">
-        {copiedMessage}
-      </p>
+      {statusMessage && (
+        <p className={copyError ? "copy-status is-error" : "copy-status is-success"} role="status">
+          {statusMessage}
+          <span className="visually-hidden">{copyAnnouncementCount}</span>
+        </p>
+      )}
 
       <div className="page-sections">
         <section className="scroll-section target-section" id={sectionAnchorId(VIEW_IDS.TARGET)}>
@@ -511,11 +541,6 @@ export const App = () => {
             onEnabledChange={setAdminUserEnabled}
             onNameChange={setAdminUserName}
           />
-          {copyError && (
-            <p className="copy-status" role="status">
-              {copyError}
-            </p>
-          )}
         </section>
 
         <section className="scroll-section" id={sectionAnchorId(VIEW_IDS.PACKAGES)}>
@@ -583,6 +608,12 @@ export const App = () => {
                   />
                 ))}
               </div>
+              {!packageSearchHasResults && (
+                <div className="empty-state" role="status">
+                  <strong>No catalog packages found</strong>
+                  <p>Try another package, group, or label. Custom package names can still be added below.</p>
+                </div>
+              )}
 
               <label className="field custom-packages">
                 <span>Custom {activeTarget.packageManager} packages</span>
@@ -941,19 +972,20 @@ const TargetSelector = ({
             role="dialog"
             aria-modal="true"
             aria-labelledby="target-modal-title"
+            aria-describedby="target-modal-warning"
             onKeyDown={handleDialogKeyDown}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="modal-heading">
               <div>
                 <p className="section-label">Target OS</p>
-                <h2 id="target-modal-title">Change target OS</h2>
+                <h2 id="target-modal-title">Change target</h2>
               </div>
               <button ref={closeButtonRef} type="button" onClick={closeTargetDialog}>
                 Close
               </button>
             </div>
-            <p className="target-warning">
+            <p className="target-warning" id="target-modal-warning">
               Changing target OS can reset command defaults and package names. Review the command after switching.
             </p>
             <div className="target-options compact" role="group" aria-label="Target OS choices">
@@ -1150,7 +1182,6 @@ const PackageGroupPanel = ({
                 disabled={!hasPackageForOs}
                 onChange={() => onPackageToggle(item.id)}
               />
-              <span className="tree-branch" aria-hidden="true" />
               <span className="package-row-copy">
                 <strong>{item.label}</strong>
                 <small>{packageDescriptionFor(item, group)}</small>
@@ -1231,6 +1262,7 @@ const ToolchainControl = ({
 }) => {
   const [editing, setEditing] = useState(false);
   const activeStrategy = strategies.find((strategy) => strategy.id === activeId) ?? strategies[0];
+  const strategyOptionsId = `${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-strategy-options`;
   const setEnabled = (checked: boolean) => {
     if (!checked) {
       setEditing(false);
@@ -1254,14 +1286,20 @@ const ToolchainControl = ({
             <strong>{activeStrategy.label}</strong>
             <small>{activeStrategy.description}</small>
           </div>
-          <button type="button" onClick={() => setEditing((current) => !current)}>
+          <button
+            aria-controls={strategyOptionsId}
+            aria-expanded={editing}
+            aria-label={editing ? `Done changing ${label} setup strategy` : `Change ${label} setup strategy`}
+            type="button"
+            onClick={() => setEditing((current) => !current)}
+          >
             {editing ? "Done" : "Change"}
           </button>
         </div>
       )}
 
       {enabled && editing && (
-        <div className="strategy-grid">
+        <div className="strategy-grid" id={strategyOptionsId}>
           {strategies.map((strategy) => (
             <button
               aria-pressed={activeId === strategy.id}
@@ -1296,6 +1334,7 @@ const NodePackageManagerChooser = ({
 }) => {
   const [editing, setEditing] = useState(false);
   const activeManager = managers.find((manager) => manager.id === activeId) ?? managers[0];
+  const managerOptionsId = "node-package-manager-options";
 
   if (!enabled) {
     return null;
@@ -1314,12 +1353,18 @@ const NodePackageManagerChooser = ({
           <strong>{activeManager.label}</strong>
           <small>{activeManager.description}</small>
         </div>
-        <button type="button" onClick={() => setEditing((current) => !current)}>
+        <button
+          aria-controls={managerOptionsId}
+          aria-expanded={editing}
+          aria-label={editing ? "Done changing Node package manager" : "Change Node package manager"}
+          type="button"
+          onClick={() => setEditing((current) => !current)}
+        >
           {editing ? "Done" : "Change"}
         </button>
       </div>
       {editing && (
-        <div className="strategy-grid">
+        <div className="strategy-grid" id={managerOptionsId}>
           {managers.map((manager) => (
             <button
               aria-pressed={activeId === manager.id}
@@ -1496,6 +1541,7 @@ const ConfigBlockEditor = ({
           >
             <div className="editor-block-header">
               <button
+                aria-pressed={block.id === activeBlock.id}
                 className="block-title-button"
                 type="button"
                 onClick={() => {
@@ -1693,6 +1739,25 @@ const CommandPanel = ({
   setRunInTmux: (value: boolean) => void;
   onCopy: (key: string, value: string) => void;
 }) => {
+  const commandDetails = [
+    { label: "Target version", value: targetVersion || "not set" },
+    { label: "Admin user", value: adminUserEnabled ? adminUserName.trim() || "current user" : "off" },
+    { label: "Docker", value: dockerEnabled ? "on" : "off" },
+    { label: "Node", value: nodeEnabled ? nodeStrategy : "off" },
+    { label: "Node packages", value: nodeEnabled ? nodePackageManager : "off" },
+    {
+      label: "Agent CLIs",
+      value:
+        nodeEnabled && selectedAgentTools.length > 0 ? selectedAgentTools.map((tool) => tool.label).join(", ") : "off"
+    },
+    {
+      label: "Developer tools",
+      value: selectedDeveloperTools.length > 0 ? selectedDeveloperTools.map((tool) => tool.label).join(", ") : "off"
+    },
+    { label: "Python", value: pythonEnabled ? pythonStrategy : "off" },
+    { label: "Java", value: javaEnabled ? javaStrategy : "off" }
+  ];
+
   return (
     <aside className="panel sticky-panel">
       <p className="section-label">Command</p>
@@ -1716,23 +1781,6 @@ const CommandPanel = ({
           <span>Run in tmux</span>
         </label>
       </div>
-      <p className="muted compact-note">Target version: {targetVersion || "not set"}</p>
-      <p className="muted compact-note">
-        Admin user: {adminUserEnabled ? adminUserName.trim() || "current user" : "off"}
-      </p>
-      <p className="muted compact-note">Docker install: {dockerEnabled ? "on" : "off"}</p>
-      <p className="muted compact-note">Node setup: {nodeEnabled ? nodeStrategy : "off"}</p>
-      <p className="muted compact-note">Node package manager: {nodeEnabled ? nodePackageManager : "off"}</p>
-      <p className="muted compact-note">
-        Agent CLIs:{" "}
-        {nodeEnabled && selectedAgentTools.length > 0 ? selectedAgentTools.map((tool) => tool.label).join(", ") : "off"}
-      </p>
-      <p className="muted compact-note">
-        Developer tools:{" "}
-        {selectedDeveloperTools.length > 0 ? selectedDeveloperTools.map((tool) => tool.label).join(", ") : "off"}
-      </p>
-      <p className="muted compact-note">Python setup: {pythonEnabled ? pythonStrategy : "off"}</p>
-      <p className="muted compact-note">Java install: {javaEnabled ? javaStrategy : "off"}</p>
       <div className="mini-summary">
         <strong>{selectedPackageNames.length}</strong>
         <span>{activeTarget.packageManager} packages selected</span>
@@ -1753,6 +1801,17 @@ const CommandPanel = ({
           onCopy={() => onCopy("local-command", commandSet.local)}
         />
       )}
+      <details className="command-details">
+        <summary>Review command details</summary>
+        <dl>
+          {commandDetails.map((item) => (
+            <div key={item.label}>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
     </aside>
   );
 };
