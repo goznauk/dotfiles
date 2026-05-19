@@ -637,6 +637,24 @@
       "note": "Convenient HTTP, download, compression, encryption, and batch execution tools."
     }
   ],
+  "agentTools": [
+    {
+      "id": "claude-code",
+      "label": "Claude Code",
+      "npmPackage": "@anthropic-ai/claude-code",
+      "command": "claude",
+      "defaultSelected": true,
+      "description": "Anthropic coding agent CLI. Installs through npm after Node is ready."
+    },
+    {
+      "id": "openai-codex",
+      "label": "OpenAI Codex CLI",
+      "npmPackage": "@openai/codex",
+      "command": "codex",
+      "defaultSelected": true,
+      "description": "OpenAI coding agent CLI. Installs through npm after Node is ready."
+    }
+  ],
   "strategies": {
     "docker": [
       {

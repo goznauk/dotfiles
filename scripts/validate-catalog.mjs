@@ -51,10 +51,12 @@ const ubuntuKnownPackages = new Set([...ubuntuCore, ...ubuntuOptional]);
 const osIds = catalog.osTargets.map((target) => target.id);
 const groupIds = catalog.groups.map((group) => group.id);
 const packageIds = catalog.packages.map((item) => item.id);
+const agentToolIds = catalog.agentTools.map((item) => item.id);
 
 reportDuplicate("osTargets", osIds);
 reportDuplicate("groups", groupIds);
 reportDuplicate("packages", packageIds);
+reportDuplicate("agentTools", agentToolIds);
 reportDuplicate("Ubuntu core packages", ubuntuCore);
 reportDuplicate("Ubuntu optional packages", ubuntuOptional);
 reportDuplicate("Ubuntu package lists", [...ubuntuCore, ...ubuntuOptional]);
@@ -96,6 +98,14 @@ for (const item of catalog.packages) {
       }
     }
   }
+}
+
+for (const item of catalog.agentTools) {
+  requireValue(item.id, "Agent tool is missing id");
+  requireValue(item.label, `Agent tool ${item.id} is missing label`);
+  requireValue(item.npmPackage, `Agent tool ${item.id} is missing npm package`);
+  requireValue(item.command, `Agent tool ${item.id} is missing command`);
+  requireValue(item.description, `Agent tool ${item.id} is missing description`);
 }
 
 for (const [strategyGroup, strategies] of Object.entries(catalog.strategies)) {

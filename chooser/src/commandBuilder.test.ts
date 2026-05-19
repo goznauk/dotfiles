@@ -7,7 +7,14 @@ import {
   shellQuote,
   type BuildCommandInput
 } from "./commandBuilder.js";
-import { DOCKER_STRATEGY_IDS, JAVA_STRATEGY_IDS, NODE_STRATEGY_IDS, OS_IDS, PYTHON_STRATEGY_IDS } from "./ids.js";
+import {
+  AGENT_TOOL_IDS,
+  DOCKER_STRATEGY_IDS,
+  JAVA_STRATEGY_IDS,
+  NODE_STRATEGY_IDS,
+  OS_IDS,
+  PYTHON_STRATEGY_IDS
+} from "./ids.js";
 
 const assertEqual = (actual: unknown, expected: unknown, label: string) => {
   if (actual !== expected) {
@@ -46,6 +53,7 @@ const baseInput: BuildCommandInput = {
   pythonStrategy: PYTHON_STRATEGY_IDS.SYSTEM_UV,
   javaEnabled: false,
   javaStrategy: JAVA_STRATEGY_IDS.MISE_TEMURIN_21,
+  selectedAgentToolIds: [AGENT_TOOL_IDS.CLAUDE_CODE, AGENT_TOOL_IDS.OPENAI_CODEX],
   powerlevel10k: true,
   prepareSystem: true,
   runInTmux: true,
@@ -84,6 +92,11 @@ assertNotIncludes(plainCommands.primary, "tmux new-session", "tmux wrapper can b
 assertIncludes(plainCommands.local, "./setup.sh 'ubuntu'", "local command uses setup dispatcher");
 assertIncludes(plainCommands.primary, "'--target-version' '26.04'", "primary command includes target version");
 assertIncludes(plainCommands.primary, "'--apt-packages' 'git,zsh'", "primary command includes selected packages");
+assertIncludes(
+  plainCommands.primary,
+  "'--agent-tools' 'claude-code,openai-codex'",
+  "primary command includes selected agent tools"
+);
 assertIncludes(plainCommands.primary, "'--with-tpm'", "primary command includes TPM flag");
 
 const noPowerlevelCommands = buildCommands({
@@ -111,6 +124,11 @@ assertIncludes(
   noPackageCommands.packageCommand,
   "mise settings add idiomatic_version_file_enable_tools node",
   "mise node preview enables idiomatic version files"
+);
+assertIncludes(
+  noPackageCommands.packageCommand,
+  "mise exec node@lts -- npm install -g '@anthropic-ai/claude-code' '@openai/codex'",
+  "package preview includes selected agent CLIs"
 );
 
 const skippedPackageStep = buildCommands({

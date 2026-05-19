@@ -4,6 +4,7 @@ import {
   defaultVersionForTarget,
   packageDescriptionFor,
   packageNamesForOs,
+  type AgentTool,
   type OsTarget,
   type PackageGroup,
   type Strategy
@@ -29,6 +30,7 @@ import {
   PYTHON_STRATEGY_IDS,
   THEME_MODES,
   VIEW_IDS,
+  type AgentToolId,
   type ConfigKey,
   type DockerStrategyId,
   type InstallStepKey,
@@ -49,6 +51,8 @@ const splitCustomPackages = (value: string) =>
     .filter(Boolean);
 
 const unique = (items: string[]) => Array.from(new Set(items.filter(Boolean)));
+
+const defaultAgentToolIds = () => catalog.agentTools.filter((tool) => tool.defaultSelected).map((tool) => tool.id);
 
 const defaultDockerStrategy = (osId: OsId): DockerStrategyId => {
   const strategy = catalog.strategies.docker.find((item) => item.defaults?.includes(osId));
@@ -185,6 +189,7 @@ export const App = () => {
   );
   const [nodeStrategy, setNodeStrategy] = useState<NodeStrategyId>(NODE_STRATEGY_IDS.MISE);
   const [nodeEnabled, setNodeEnabled] = useState(true);
+  const [selectedAgentToolIds, setSelectedAgentToolIds] = useState<AgentToolId[]>(defaultAgentToolIds);
   const [pythonStrategy, setPythonStrategy] = useState<PythonStrategyId>(PYTHON_STRATEGY_IDS.SYSTEM_UV);
   const [pythonEnabled, setPythonEnabled] = useState(true);
   const [javaStrategy, setJavaStrategy] = useState<JavaStrategyId>(JAVA_STRATEGY_IDS.MISE_TEMURIN_21);
@@ -265,6 +270,7 @@ export const App = () => {
         pythonStrategy: pythonEnabled ? pythonStrategy : PYTHON_STRATEGY_IDS.NONE,
         javaEnabled,
         javaStrategy,
+        selectedAgentToolIds: nodeEnabled ? selectedAgentToolIds : [],
         powerlevel10k,
         prepareSystem,
         runInTmux,
@@ -288,6 +294,7 @@ export const App = () => {
       pythonStrategy,
       repoRef,
       runInTmux,
+      selectedAgentToolIds,
       selectedPackageNames,
       stepSelection
     ]
@@ -329,6 +336,10 @@ export const App = () => {
         .filter((item) => item.totalCount > 0),
     [selectedPackageIds]
   );
+  const selectedAgentTools = useMemo(
+    () => catalog.agentTools.filter((tool) => selectedAgentToolIds.includes(tool.id)),
+    [selectedAgentToolIds]
+  );
 
   const switchOs = (osId: OsId) => {
     const nextDockerStrategy = defaultDockerStrategy(osId);
@@ -353,6 +364,11 @@ export const App = () => {
       }
       return current.filter((item) => !groupPackageIds.includes(item));
     });
+  };
+  const toggleAgentTool = (toolId: AgentToolId) => {
+    setSelectedAgentToolIds((current) =>
+      current.includes(toolId) ? current.filter((item) => item !== toolId) : [...current, toolId]
+    );
   };
 
   const copyText = async (key: string, value: string) => {
@@ -564,6 +580,12 @@ export const App = () => {
                 recommendedId={NODE_STRATEGY_IDS.MISE}
                 strategies={nodeStrategies}
               />
+              <AgentToolChooser
+                enabled={nodeEnabled}
+                selectedIds={selectedAgentToolIds}
+                tools={catalog.agentTools}
+                onToggle={toggleAgentTool}
+              />
               <ToolchainControl
                 activeId={pythonStrategy}
                 enabled={pythonEnabled}
@@ -663,6 +685,7 @@ export const App = () => {
               dockerEnabled={dockerEnabled}
               dockerStrategy={dockerStrategy}
               installTpm={installTpm}
+              selectedAgentTools={nodeEnabled ? selectedAgentTools : []}
               javaEnabled={javaEnabled}
               javaStrategy={javaStrategy}
               nodeEnabled={nodeEnabled}
@@ -692,6 +715,7 @@ export const App = () => {
             pythonStrategy={pythonStrategy}
             repoRef={repoRef}
             runInTmux={runInTmux}
+            selectedAgentTools={nodeEnabled ? selectedAgentTools : []}
             selectedPackageNames={selectedPackageNames}
             targetVersion={activeTargetVersion}
             setAssumeYes={setAssumeYes}
@@ -1098,6 +1122,49 @@ const ToolchainControl = ({
   );
 };
 
+const AgentToolChooser = ({
+  enabled,
+  selectedIds,
+  tools,
+  onToggle
+}: {
+  enabled: boolean;
+  selectedIds: AgentToolId[];
+  tools: AgentTool[];
+  onToggle: (toolId: AgentToolId) => void;
+}) => {
+  if (!enabled) {
+    return null;
+  }
+
+  return (
+    <div className="strategy-block agent-tools-block">
+      <div className="strategy-heading">
+        <div>
+          <h3>Coding agents</h3>
+          <p className="muted compact-note">Install npm-based coding CLIs after Node is ready.</p>
+        </div>
+      </div>
+      <div className="agent-tool-list">
+        {tools.map((tool) => (
+          <div className="agent-tool-row" key={tool.id}>
+            <div>
+              <strong>{tool.label}</strong>
+              <small>{tool.description}</small>
+              <code>{tool.npmPackage}</code>
+            </div>
+            <ToggleSwitch
+              checked={selectedIds.includes(tool.id)}
+              label={selectedIds.includes(tool.id) ? "On" : "Off"}
+              onChange={() => onToggle(tool.id)}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const ConfigBlockEditor = ({
   activeBlockId,
   blocks,
@@ -1327,6 +1394,7 @@ const CommandPanel = ({
   pythonStrategy,
   repoRef,
   runInTmux,
+  selectedAgentTools,
   selectedPackageNames,
   targetVersion,
   setAssumeYes,
@@ -1349,6 +1417,7 @@ const CommandPanel = ({
   pythonStrategy: PythonStrategyId;
   repoRef: string;
   runInTmux: boolean;
+  selectedAgentTools: AgentTool[];
   selectedPackageNames: string[];
   targetVersion: string;
   setAssumeYes: (value: boolean) => void;
@@ -1383,6 +1452,10 @@ const CommandPanel = ({
       <p className="muted compact-note">Target version: {targetVersion || "not set"}</p>
       <p className="muted compact-note">Docker install: {dockerEnabled ? "on" : "off"}</p>
       <p className="muted compact-note">Node setup: {nodeEnabled ? nodeStrategy : "off"}</p>
+      <p className="muted compact-note">
+        Agent CLIs:{" "}
+        {nodeEnabled && selectedAgentTools.length > 0 ? selectedAgentTools.map((tool) => tool.label).join(", ") : "off"}
+      </p>
       <p className="muted compact-note">Python setup: {pythonEnabled ? pythonStrategy : "off"}</p>
       <p className="muted compact-note">Java install: {javaEnabled ? javaStrategy : "off"}</p>
       <div className="mini-summary">
@@ -1424,6 +1497,7 @@ const SummaryView = ({
   pythonEnabled,
   pythonStrategy,
   runInTmux,
+  selectedAgentTools,
   selectedPackageNames,
   stepSelection,
   targetVersion
@@ -1442,6 +1516,7 @@ const SummaryView = ({
   pythonEnabled: boolean;
   pythonStrategy: PythonStrategyId;
   runInTmux: boolean;
+  selectedAgentTools: AgentTool[];
   selectedPackageNames: string[];
   stepSelection: Record<InstallStepKey, boolean>;
   targetVersion: string;
@@ -1482,6 +1557,14 @@ const SummaryView = ({
           <div>
             <dt>Node strategy</dt>
             <dd>{nodeEnabled ? nodeStrategy : "off"}</dd>
+          </div>
+          <div>
+            <dt>Agent CLIs</dt>
+            <dd>
+              {nodeEnabled && selectedAgentTools.length > 0
+                ? selectedAgentTools.map((tool) => tool.label).join(", ")
+                : "off"}
+            </dd>
           </div>
           <div>
             <dt>Python strategy</dt>

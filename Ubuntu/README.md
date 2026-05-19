@@ -47,6 +47,8 @@ Useful variants:
 ./setup.sh ubuntu --yes --node-strategy nvm
 ./setup.sh ubuntu --yes --python-strategy mise
 ./setup.sh ubuntu --yes --java-strategy mise-temurin-21
+./setup.sh ubuntu --yes --agent-tools claude-code,openai-codex
+./setup.sh ubuntu --yes --no-agent-tools
 ```
 
 ## What it installs
@@ -58,6 +60,10 @@ Useful variants:
 - Node LTS through `mise` by default, or `nvm` with `--node-strategy nvm`.
   The zsh config activates mise for interactive shells, and the installer
   enables `.nvmrc` and `.node-version` support for mise-managed Node.
+- Coding agent CLIs through npm after Node is ready. With the default mise Node
+  setup, global installs run through mise so an older system npm is not used.
+  The default list is Claude Code and OpenAI Codex CLI. Use `--no-agent-tools`
+  to skip them.
 - Container runtime through `--docker-strategy`: Docker official repository,
   Ubuntu packages, Podman compatibility, or none.
 - Target release check through `--target-version`, which warns before

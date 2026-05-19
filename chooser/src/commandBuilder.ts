@@ -1,10 +1,12 @@
 import {
+  AGENT_TOOL_IDS,
   DOCKER_STRATEGY_IDS,
   INSTALL_STEP_KEYS,
   JAVA_STRATEGY_IDS,
   NODE_STRATEGY_IDS,
   OS_IDS,
   PYTHON_STRATEGY_IDS,
+  type AgentToolId,
   type CommandOsId,
   type DockerStrategyId,
   type InstallStepKey,
@@ -16,6 +18,11 @@ import {
 export const REPO_OWNER = "goznauk";
 export const REPO_NAME = "dotfiles";
 export const DEFAULT_REF = "main";
+
+export const AGENT_TOOL_PACKAGES: Record<AgentToolId, string> = {
+  [AGENT_TOOL_IDS.CLAUDE_CODE]: "@anthropic-ai/claude-code",
+  [AGENT_TOOL_IDS.OPENAI_CODEX]: "@openai/codex"
+};
 
 export type CommandTarget = {
   commandTarget: string;
@@ -73,6 +80,7 @@ export type BuildCommandInput = {
   pythonStrategy: PythonStrategyId;
   javaEnabled: boolean;
   javaStrategy: JavaStrategyId;
+  selectedAgentToolIds: AgentToolId[];
   powerlevel10k: boolean;
   prepareSystem: boolean;
   runInTmux: boolean;
@@ -123,6 +131,11 @@ export const buildCommands = (input: BuildCommandInput): CommandSet => {
     flags.push("--node-strategy", input.nodeStrategy);
     flags.push("--python-strategy", input.pythonStrategy);
     flags.push("--java-strategy", input.javaEnabled ? input.javaStrategy : JAVA_STRATEGY_IDS.NONE);
+    if (input.selectedAgentToolIds.length > 0) {
+      flags.push("--agent-tools", input.selectedAgentToolIds.join(","));
+    } else {
+      flags.push("--no-agent-tools");
+    }
   }
 
   if (input.installTpm) {
@@ -145,7 +158,8 @@ export const buildCommands = (input: BuildCommandInput): CommandSet => {
       input.dockerEnabled ? input.dockerStrategy : DOCKER_STRATEGY_IDS.NONE,
       input.nodeStrategy,
       input.pythonStrategy,
-      input.javaEnabled ? input.javaStrategy : JAVA_STRATEGY_IDS.NONE
+      input.javaEnabled ? input.javaStrategy : JAVA_STRATEGY_IDS.NONE,
+      input.selectedAgentToolIds
     )
   };
 };
@@ -180,7 +194,8 @@ export const buildPackageCommand = (
   dockerStrategy: DockerStrategyId,
   nodeStrategy: NodeStrategyId,
   pythonStrategy: PythonStrategyId,
-  javaStrategy: JavaStrategyId
+  javaStrategy: JavaStrategyId,
+  selectedAgentToolIds: AgentToolId[] = []
 ) => {
   const installLine =
     osId === OS_IDS.UBUNTU
@@ -197,10 +212,13 @@ export const buildPackageCommand = (
   const targetLine = targetVersion.trim() ? `# Target OS version: ${targetVersion.trim()}` : "";
   const dockerLine = dockerPreviewLine(osId, dockerStrategy);
   const nodeLine = nodePreviewLine(nodeStrategy);
+  const agentToolsLine = agentToolsPreviewLine(nodeStrategy, selectedAgentToolIds);
   const pythonLine = pythonPreviewLine(pythonStrategy);
   const javaLine = javaPreviewLine(osId, javaStrategy);
 
-  return [targetLine, installLine, dockerLine, nodeLine, pythonLine, javaLine].filter(Boolean).join("\n");
+  return [targetLine, installLine, dockerLine, nodeLine, agentToolsLine, pythonLine, javaLine]
+    .filter(Boolean)
+    .join("\n");
 };
 
 const dockerPreviewLine = (osId: CommandOsId, strategy: DockerStrategyId) => {
@@ -229,6 +247,22 @@ const nodePreviewLine = (strategy: NodeStrategyId) => {
     return "curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash";
   }
   return "curl -fsSL https://mise.run | sh && mise use -g node@lts && mise settings add idiomatic_version_file_enable_tools node";
+};
+
+const agentToolsPreviewLine = (nodeStrategy: NodeStrategyId, selectedAgentToolIds: AgentToolId[]) => {
+  const packages = selectedAgentToolIds.map((toolId) => AGENT_TOOL_PACKAGES[toolId]).filter(Boolean);
+  if (packages.length === 0) {
+    return "# Agent CLI install skipped";
+  }
+
+  if (nodeStrategy === NODE_STRATEGY_IDS.NONE) {
+    return "# Agent CLI install needs Node";
+  }
+
+  const installArgs = packages.map(shellQuote).join(" ");
+  return nodeStrategy === NODE_STRATEGY_IDS.MISE
+    ? `mise exec node@lts -- npm install -g ${installArgs}`
+    : `npm install -g ${installArgs}`;
 };
 
 const pythonPreviewLine = (strategy: PythonStrategyId) => {

@@ -27,6 +27,8 @@ DOCKER_STRATEGY="official"
 NODE_STRATEGY="mise"
 PYTHON_STRATEGY="system-uv"
 JAVA_STRATEGY="none"
+AGENT_TOOL_MODE="default"
+AGENT_TOOL_CSV="claude-code,openai-codex"
 TARGET_VERSION=""
 
 usage() {
@@ -62,6 +64,10 @@ Options:
                   system-uv, mise, or none
   --java-strategy VALUE
                   mise-temurin-21, distro-openjdk-21, or none
+  --agent-tools LIST
+                  Install selected npm agent CLIs: claude-code,openai-codex
+  --no-agent-tools
+                  Skip npm agent CLI installation
   -h, --help       Show this help
 
 Examples:
@@ -186,6 +192,20 @@ while [[ "$#" -gt 0 ]]; do
           ;;
       esac
       shift 2
+      ;;
+    --agent-tools)
+      AGENT_TOOL_MODE="selected"
+      AGENT_TOOL_CSV="${2:-}"
+      if [[ -z "$AGENT_TOOL_CSV" ]]; then
+        printf 'Missing value for --agent-tools\n' >&2
+        exit 1
+      fi
+      shift 2
+      ;;
+    --no-agent-tools)
+      AGENT_TOOL_MODE="none"
+      AGENT_TOOL_CSV=""
+      shift
       ;;
     -h|--help)
       usage
@@ -702,6 +722,97 @@ install_java_runtime() {
   esac
 }
 
+resolve_agent_tool_packages() {
+  local -n __resolve_agent_tool_packages_ref="$1"
+  local selected=()
+  local tool
+
+  __resolve_agent_tool_packages_ref=()
+
+  case "$AGENT_TOOL_MODE" in
+    none)
+      return 0
+      ;;
+    default|selected)
+      split_csv "$AGENT_TOOL_CSV" selected
+      ;;
+  esac
+
+  for tool in "${selected[@]}"; do
+    case "$tool" in
+      claude-code)
+        __resolve_agent_tool_packages_ref+=("@anthropic-ai/claude-code")
+        ;;
+      openai-codex)
+        __resolve_agent_tool_packages_ref+=("@openai/codex")
+        ;;
+      *)
+        warn "Ignoring unknown agent tool: $tool"
+        ;;
+    esac
+  done
+}
+
+install_global_npm_packages() {
+  local packages=("$@")
+  local mise_bin="$HOME/.local/bin/mise"
+
+  if [[ "${#packages[@]}" -eq 0 ]]; then
+    return 0
+  fi
+
+  if [[ "$NODE_STRATEGY" == "mise" ]]; then
+    if command -v mise >/dev/null 2>&1; then
+      mise exec node@lts -- npm install -g "${packages[@]}"
+      return 0
+    fi
+
+    if [[ -x "$mise_bin" ]]; then
+      "$mise_bin" exec node@lts -- npm install -g "${packages[@]}"
+      return 0
+    fi
+
+    warn 'mise was not found; agent CLI installation skipped.'
+    return 1
+  fi
+
+  if command -v npm >/dev/null 2>&1; then
+    npm install -g "${packages[@]}"
+    return 0
+  fi
+
+  if command -v mise >/dev/null 2>&1; then
+    mise exec node@lts -- npm install -g "${packages[@]}"
+    return 0
+  fi
+
+  if [[ -x "$mise_bin" ]]; then
+    "$mise_bin" exec node@lts -- npm install -g "${packages[@]}"
+    return 0
+  fi
+
+  warn 'npm was not found; agent CLI installation skipped.'
+  return 1
+}
+
+install_agent_tools() {
+  local packages=()
+
+  if [[ "$NODE_STRATEGY" == "none" && "$AGENT_TOOL_MODE" == "default" ]]; then
+    log 'Skipping agent CLIs because Node setup is disabled'
+    return 0
+  fi
+
+  resolve_agent_tool_packages packages
+  if [[ "${#packages[@]}" -eq 0 ]]; then
+    log 'Skipping agent CLIs'
+    return 0
+  fi
+
+  log 'Installing npm agent CLIs'
+  install_global_npm_packages "${packages[@]}" || true
+}
+
 install_tools() {
   install_uv
   install_rust
@@ -717,6 +828,7 @@ install_tools() {
       log 'Skipping Node runtime setup'
       ;;
   esac
+  install_agent_tools
   install_java_runtime
 }
 
@@ -737,6 +849,7 @@ print_plan() {
   printf 'Node strategy: %s\n' "$NODE_STRATEGY"
   printf 'Python strategy: %s\n' "$PYTHON_STRATEGY"
   printf 'Java strategy: %s\n' "$JAVA_STRATEGY"
+  printf 'Agent tools: %s\n' "${AGENT_TOOL_CSV:-none}"
   printf 'Powerlevel10k: %s\n' "$([[ "$POWERLEVEL10K" -eq 1 ]] && printf yes || printf no)"
   printf 'Install TPM: %s\n' "$([[ "$WITH_TPM" -eq 1 ]] && printf yes || printf no)"
   printf 'Apt packages: %s\n' "${#packages[@]}"

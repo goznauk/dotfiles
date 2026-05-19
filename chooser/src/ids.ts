@@ -67,6 +67,13 @@ export const JAVA_STRATEGY_IDS = {
 
 export type JavaStrategyId = (typeof JAVA_STRATEGY_IDS)[keyof typeof JAVA_STRATEGY_IDS];
 
+export const AGENT_TOOL_IDS = {
+  CLAUDE_CODE: "claude-code",
+  OPENAI_CODEX: "openai-codex"
+} as const;
+
+export type AgentToolId = (typeof AGENT_TOOL_IDS)[keyof typeof AGENT_TOOL_IDS];
+
 export const CONFIG_KEYS = {
   ZSHRC: "zshrc",
   VIMRC: "vimrc",
