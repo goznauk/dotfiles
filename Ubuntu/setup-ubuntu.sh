@@ -25,8 +25,11 @@ OPTIONAL_PACKAGE_CSV=""
 EXTRA_PACKAGE_CSV=""
 DOCKER_STRATEGY="official"
 NODE_STRATEGY="mise"
+NODE_PACKAGE_MANAGER="pnpm"
 PYTHON_STRATEGY="system-uv"
 JAVA_STRATEGY="none"
+DEVELOPER_TOOL_MODE="default"
+DEVELOPER_TOOL_CSV="rust,go,bun,deno,gh"
 AGENT_TOOL_MODE="default"
 AGENT_TOOL_CSV="claude-code,openai-codex"
 TARGET_VERSION=""
@@ -41,7 +44,7 @@ Options:
   --skip-apt       Skip apt packages
   --skip-dotfiles  Skip dotfile links
   --skip-shell     Skip zsh and oh-my-zsh setup
-  --skip-tools     Skip uv, rustup, and language runtime setup
+  --skip-tools     Skip uv, language runtimes, and extra developer tools
   --with-tpm       Install tmux plugin manager
   --dry-run        Print resolved choices and exit without changing the system
   --no-powerlevel10k
@@ -60,10 +63,16 @@ Options:
                   official, distro, podman, or none
   --node-strategy VALUE
                   mise, nvm, or none
+  --node-package-manager VALUE
+                  pnpm, yarn, or npm
   --python-strategy VALUE
                   system-uv, mise, or none
   --java-strategy VALUE
                   mise-temurin-21, distro-openjdk-21, or none
+  --developer-tools LIST
+                  Install selected tools: rust,go,bun,deno,gh,ruby,dotnet
+  --no-developer-tools
+                  Skip extra developer tools
   --agent-tools LIST
                   Install selected npm agent CLIs: claude-code,openai-codex
   --no-agent-tools
@@ -171,6 +180,17 @@ while [[ "$#" -gt 0 ]]; do
       esac
       shift 2
       ;;
+    --node-package-manager)
+      NODE_PACKAGE_MANAGER="${2:-}"
+      case "$NODE_PACKAGE_MANAGER" in
+        pnpm|yarn|npm) ;;
+        *)
+          printf 'Invalid --node-package-manager: %s\n' "$NODE_PACKAGE_MANAGER" >&2
+          exit 1
+          ;;
+      esac
+      shift 2
+      ;;
     --python-strategy)
       PYTHON_STRATEGY="${2:-}"
       case "$PYTHON_STRATEGY" in
@@ -192,6 +212,20 @@ while [[ "$#" -gt 0 ]]; do
           ;;
       esac
       shift 2
+      ;;
+    --developer-tools)
+      DEVELOPER_TOOL_MODE="selected"
+      DEVELOPER_TOOL_CSV="${2:-}"
+      if [[ -z "$DEVELOPER_TOOL_CSV" ]]; then
+        printf 'Missing value for --developer-tools\n' >&2
+        exit 1
+      fi
+      shift 2
+      ;;
+    --no-developer-tools)
+      DEVELOPER_TOOL_MODE="none"
+      DEVELOPER_TOOL_CSV=""
+      shift
       ;;
     --agent-tools)
       AGENT_TOOL_MODE="selected"
@@ -690,6 +724,66 @@ install_nvm_and_node() {
   fi
 }
 
+run_node_command() {
+  local mise_bin="$HOME/.local/bin/mise"
+
+  if [[ "$NODE_STRATEGY" == "mise" ]]; then
+    if command -v mise >/dev/null 2>&1; then
+      mise exec node@lts -- "$@"
+      return $?
+    fi
+
+    if [[ -x "$mise_bin" ]]; then
+      "$mise_bin" exec node@lts -- "$@"
+      return $?
+    fi
+
+    warn 'mise was not found for Node command.'
+    return 1
+  fi
+
+  if command -v "$1" >/dev/null 2>&1; then
+    "$@"
+    return $?
+  fi
+
+  if command -v mise >/dev/null 2>&1; then
+    mise exec node@lts -- "$@"
+    return $?
+  fi
+
+  if [[ -x "$mise_bin" ]]; then
+    "$mise_bin" exec node@lts -- "$@"
+    return $?
+  fi
+
+  warn "Node command not found: $1"
+  return 1
+}
+
+install_node_package_manager() {
+  if [[ "$NODE_STRATEGY" == "none" ]]; then
+    log 'Skipping Node package manager setup'
+    return 0
+  fi
+
+  case "$NODE_PACKAGE_MANAGER" in
+    pnpm)
+      log 'Enabling pnpm through Corepack'
+      run_node_command corepack enable pnpm || warn 'Could not enable pnpm through Corepack.'
+      run_node_command corepack prepare pnpm@latest --activate || warn 'Could not activate latest pnpm.'
+      ;;
+    yarn)
+      log 'Enabling Yarn through Corepack'
+      run_node_command corepack enable yarn || warn 'Could not enable Yarn through Corepack.'
+      run_node_command corepack prepare yarn@stable --activate || warn 'Could not activate stable Yarn.'
+      ;;
+    npm)
+      log 'Using npm bundled with Node'
+      ;;
+  esac
+}
+
 install_python_runtime() {
   case "$PYTHON_STRATEGY" in
     system-uv)
@@ -704,6 +798,92 @@ install_python_runtime() {
       log 'Skipping extra Python runtime setup'
       ;;
   esac
+}
+
+resolve_developer_tools() {
+  local -n __resolve_developer_tools_ref="$1"
+  local selected=()
+  local tool
+
+  __resolve_developer_tools_ref=()
+
+  case "$DEVELOPER_TOOL_MODE" in
+    none)
+      return 0
+      ;;
+    default|selected)
+      split_csv "$DEVELOPER_TOOL_CSV" selected
+      ;;
+  esac
+
+  for tool in "${selected[@]}"; do
+    case "$tool" in
+      rust|go|bun|deno|gh|ruby|dotnet)
+        __resolve_developer_tools_ref+=("$tool")
+        ;;
+      *)
+        warn "Ignoring unknown developer tool: $tool"
+        ;;
+    esac
+  done
+}
+
+install_github_cli() {
+  log 'Installing GitHub CLI from official repository'
+  sudo install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg |
+    sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
+  sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+  printf 'deb [arch=%s signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main\n' \
+    "$(dpkg --print-architecture)" |
+    sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
+  sudo apt update
+  sudo apt install -y gh
+}
+
+install_mise_tool() {
+  local tool="$1"
+  local label="$2"
+
+  log "Installing $label through mise"
+  mise_use_global "$tool" || warn "$label setup through mise skipped."
+}
+
+install_developer_tools() {
+  local tools=()
+  local tool
+
+  resolve_developer_tools tools
+  if [[ "${#tools[@]}" -eq 0 ]]; then
+    log 'Skipping extra developer tools'
+    return 0
+  fi
+
+  for tool in "${tools[@]}"; do
+    case "$tool" in
+      rust)
+        install_rust
+        ;;
+      go)
+        install_mise_tool go@latest Go
+        ;;
+      bun)
+        install_mise_tool bun@latest Bun
+        ;;
+      deno)
+        install_mise_tool deno@latest Deno
+        ;;
+      gh)
+        install_github_cli || warn 'GitHub CLI setup skipped.'
+        ;;
+      ruby)
+        install_mise_tool ruby@latest Ruby
+        ;;
+      dotnet)
+        install_mise_tool dotnet@latest dotnet
+        ;;
+    esac
+  done
 }
 
 install_java_runtime() {
@@ -755,44 +935,12 @@ resolve_agent_tool_packages() {
 
 install_global_npm_packages() {
   local packages=("$@")
-  local mise_bin="$HOME/.local/bin/mise"
 
   if [[ "${#packages[@]}" -eq 0 ]]; then
     return 0
   fi
 
-  if [[ "$NODE_STRATEGY" == "mise" ]]; then
-    if command -v mise >/dev/null 2>&1; then
-      mise exec node@lts -- npm install -g "${packages[@]}"
-      return 0
-    fi
-
-    if [[ -x "$mise_bin" ]]; then
-      "$mise_bin" exec node@lts -- npm install -g "${packages[@]}"
-      return 0
-    fi
-
-    warn 'mise was not found; agent CLI installation skipped.'
-    return 1
-  fi
-
-  if command -v npm >/dev/null 2>&1; then
-    npm install -g "${packages[@]}"
-    return 0
-  fi
-
-  if command -v mise >/dev/null 2>&1; then
-    mise exec node@lts -- npm install -g "${packages[@]}"
-    return 0
-  fi
-
-  if [[ -x "$mise_bin" ]]; then
-    "$mise_bin" exec node@lts -- npm install -g "${packages[@]}"
-    return 0
-  fi
-
-  warn 'npm was not found; agent CLI installation skipped.'
-  return 1
+  run_node_command npm install -g "${packages[@]}"
 }
 
 install_agent_tools() {
@@ -815,7 +963,6 @@ install_agent_tools() {
 
 install_tools() {
   install_uv
-  install_rust
   install_python_runtime
   case "$NODE_STRATEGY" in
     mise)
@@ -828,7 +975,9 @@ install_tools() {
       log 'Skipping Node runtime setup'
       ;;
   esac
+  install_node_package_manager
   install_agent_tools
+  install_developer_tools
   install_java_runtime
 }
 
@@ -847,8 +996,10 @@ print_plan() {
   printf 'Tools step: %s\n' "$([[ "$SKIP_TOOLS" -eq 0 ]] && printf enabled || printf skipped)"
   printf 'Docker strategy: %s\n' "$DOCKER_STRATEGY"
   printf 'Node strategy: %s\n' "$NODE_STRATEGY"
+  printf 'Node package manager: %s\n' "$([[ "$NODE_STRATEGY" == "none" ]] && printf none || printf '%s' "$NODE_PACKAGE_MANAGER")"
   printf 'Python strategy: %s\n' "$PYTHON_STRATEGY"
   printf 'Java strategy: %s\n' "$JAVA_STRATEGY"
+  printf 'Developer tools: %s\n' "${DEVELOPER_TOOL_CSV:-none}"
   printf 'Agent tools: %s\n' "${AGENT_TOOL_CSV:-none}"
   printf 'Powerlevel10k: %s\n' "$([[ "$POWERLEVEL10K" -eq 1 ]] && printf yes || printf no)"
   printf 'Install TPM: %s\n' "$([[ "$WITH_TPM" -eq 1 ]] && printf yes || printf no)"

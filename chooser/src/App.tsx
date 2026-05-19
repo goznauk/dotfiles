@@ -5,6 +5,8 @@ import {
   packageDescriptionFor,
   packageNamesForOs,
   type AgentTool,
+  type DeveloperTool,
+  type NodePackageManager,
   type OsTarget,
   type PackageGroup,
   type Strategy
@@ -26,15 +28,18 @@ import {
   INSTALL_STEP_KEYS,
   JAVA_STRATEGY_IDS,
   NODE_STRATEGY_IDS,
+  NODE_PACKAGE_MANAGER_IDS,
   OS_IDS,
   PYTHON_STRATEGY_IDS,
   THEME_MODES,
   VIEW_IDS,
   type AgentToolId,
   type ConfigKey,
+  type DeveloperToolId,
   type DockerStrategyId,
   type InstallStepKey,
   type JavaStrategyId,
+  type NodePackageManagerId,
   type NodeStrategyId,
   type OsId,
   type PythonStrategyId,
@@ -53,6 +58,9 @@ const splitCustomPackages = (value: string) =>
 const unique = (items: string[]) => Array.from(new Set(items.filter(Boolean)));
 
 const defaultAgentToolIds = () => catalog.agentTools.filter((tool) => tool.defaultSelected).map((tool) => tool.id);
+
+const defaultDeveloperToolIds = () =>
+  catalog.developerTools.filter((tool) => tool.defaultSelected).map((tool) => tool.id);
 
 const defaultDockerStrategy = (osId: OsId): DockerStrategyId => {
   const strategy = catalog.strategies.docker.find((item) => item.defaults?.includes(osId));
@@ -189,7 +197,9 @@ export const App = () => {
   );
   const [nodeStrategy, setNodeStrategy] = useState<NodeStrategyId>(NODE_STRATEGY_IDS.MISE);
   const [nodeEnabled, setNodeEnabled] = useState(true);
+  const [nodePackageManager, setNodePackageManager] = useState<NodePackageManagerId>(NODE_PACKAGE_MANAGER_IDS.PNPM);
   const [selectedAgentToolIds, setSelectedAgentToolIds] = useState<AgentToolId[]>(defaultAgentToolIds);
+  const [selectedDeveloperToolIds, setSelectedDeveloperToolIds] = useState<DeveloperToolId[]>(defaultDeveloperToolIds);
   const [pythonStrategy, setPythonStrategy] = useState<PythonStrategyId>(PYTHON_STRATEGY_IDS.SYSTEM_UV);
   const [pythonEnabled, setPythonEnabled] = useState(true);
   const [javaStrategy, setJavaStrategy] = useState<JavaStrategyId>(JAVA_STRATEGY_IDS.MISE_TEMURIN_21);
@@ -267,10 +277,12 @@ export const App = () => {
         dockerEnabled,
         dockerStrategy,
         nodeStrategy: nodeEnabled ? nodeStrategy : NODE_STRATEGY_IDS.NONE,
+        nodePackageManager,
         pythonStrategy: pythonEnabled ? pythonStrategy : PYTHON_STRATEGY_IDS.NONE,
         javaEnabled,
         javaStrategy,
         selectedAgentToolIds: nodeEnabled ? selectedAgentToolIds : [],
+        selectedDeveloperToolIds,
         powerlevel10k,
         prepareSystem,
         runInTmux,
@@ -287,6 +299,7 @@ export const App = () => {
       javaEnabled,
       javaStrategy,
       nodeEnabled,
+      nodePackageManager,
       nodeStrategy,
       powerlevel10k,
       prepareSystem,
@@ -295,6 +308,7 @@ export const App = () => {
       repoRef,
       runInTmux,
       selectedAgentToolIds,
+      selectedDeveloperToolIds,
       selectedPackageNames,
       stepSelection
     ]
@@ -340,6 +354,10 @@ export const App = () => {
     () => catalog.agentTools.filter((tool) => selectedAgentToolIds.includes(tool.id)),
     [selectedAgentToolIds]
   );
+  const selectedDeveloperTools = useMemo(
+    () => catalog.developerTools.filter((tool) => selectedDeveloperToolIds.includes(tool.id)),
+    [selectedDeveloperToolIds]
+  );
 
   const switchOs = (osId: OsId) => {
     const nextDockerStrategy = defaultDockerStrategy(osId);
@@ -367,6 +385,11 @@ export const App = () => {
   };
   const toggleAgentTool = (toolId: AgentToolId) => {
     setSelectedAgentToolIds((current) =>
+      current.includes(toolId) ? current.filter((item) => item !== toolId) : [...current, toolId]
+    );
+  };
+  const toggleDeveloperTool = (toolId: DeveloperToolId) => {
+    setSelectedDeveloperToolIds((current) =>
       current.includes(toolId) ? current.filter((item) => item !== toolId) : [...current, toolId]
     );
   };
@@ -580,11 +603,22 @@ export const App = () => {
                 recommendedId={NODE_STRATEGY_IDS.MISE}
                 strategies={nodeStrategies}
               />
+              <NodePackageManagerChooser
+                activeId={nodePackageManager}
+                enabled={nodeEnabled}
+                managers={catalog.nodePackageManagers}
+                onChange={setNodePackageManager}
+              />
               <AgentToolChooser
                 enabled={nodeEnabled}
                 selectedIds={selectedAgentToolIds}
                 tools={catalog.agentTools}
                 onToggle={toggleAgentTool}
+              />
+              <DeveloperToolChooser
+                selectedIds={selectedDeveloperToolIds}
+                tools={catalog.developerTools}
+                onToggle={toggleDeveloperTool}
               />
               <ToolchainControl
                 activeId={pythonStrategy}
@@ -689,6 +723,7 @@ export const App = () => {
               javaEnabled={javaEnabled}
               javaStrategy={javaStrategy}
               nodeEnabled={nodeEnabled}
+              nodePackageManager={nodePackageManager}
               nodeStrategy={nodeStrategy}
               powerlevel10k={powerlevel10k}
               prepareSystem={prepareSystem}
@@ -696,6 +731,7 @@ export const App = () => {
               pythonStrategy={pythonStrategy}
               runInTmux={runInTmux}
               selectedPackageNames={selectedPackageNames}
+              selectedDeveloperTools={selectedDeveloperTools}
               stepSelection={stepSelection}
               targetVersion={activeTargetVersion}
             />
@@ -709,6 +745,7 @@ export const App = () => {
             javaEnabled={javaEnabled}
             javaStrategy={javaStrategy}
             nodeEnabled={nodeEnabled}
+            nodePackageManager={nodePackageManager}
             nodeStrategy={nodeStrategy}
             prepareSystem={prepareSystem}
             pythonEnabled={pythonEnabled}
@@ -716,6 +753,7 @@ export const App = () => {
             repoRef={repoRef}
             runInTmux={runInTmux}
             selectedAgentTools={nodeEnabled ? selectedAgentTools : []}
+            selectedDeveloperTools={selectedDeveloperTools}
             selectedPackageNames={selectedPackageNames}
             targetVersion={activeTargetVersion}
             setAssumeYes={setAssumeYes}
@@ -1122,6 +1160,63 @@ const ToolchainControl = ({
   );
 };
 
+const NodePackageManagerChooser = ({
+  activeId,
+  enabled,
+  managers,
+  onChange
+}: {
+  activeId: NodePackageManagerId;
+  enabled: boolean;
+  managers: NodePackageManager[];
+  onChange: (managerId: NodePackageManagerId) => void;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const activeManager = managers.find((manager) => manager.id === activeId) ?? managers[0];
+
+  if (!enabled) {
+    return null;
+  }
+
+  return (
+    <div className="strategy-block">
+      <div className="strategy-heading">
+        <div>
+          <h3>Node packages</h3>
+          <p className="muted compact-note">Choose the package manager enabled after Node installs.</p>
+        </div>
+      </div>
+      <div className="selected-strategy-card">
+        <div>
+          <strong>{activeManager.label}</strong>
+          <small>{activeManager.description}</small>
+        </div>
+        <button type="button" onClick={() => setEditing((current) => !current)}>
+          {editing ? "Close" : "Modify"}
+        </button>
+      </div>
+      {editing && (
+        <div className="strategy-grid">
+          {managers.map((manager) => (
+            <button
+              className={activeId === manager.id ? "strategy-card active" : "strategy-card"}
+              key={manager.id}
+              type="button"
+              onClick={() => onChange(manager.id)}
+            >
+              <strong>
+                {manager.label}
+                {manager.id === NODE_PACKAGE_MANAGER_IDS.PNPM && <small>Recommended</small>}
+              </strong>
+              <span>{manager.description}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AgentToolChooser = ({
   enabled,
   selectedIds,
@@ -1152,6 +1247,43 @@ const AgentToolChooser = ({
               <strong>{tool.label}</strong>
               <small>{tool.description}</small>
               <code>{tool.npmPackage}</code>
+            </div>
+            <ToggleSwitch
+              checked={selectedIds.includes(tool.id)}
+              label={selectedIds.includes(tool.id) ? "On" : "Off"}
+              onChange={() => onToggle(tool.id)}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const DeveloperToolChooser = ({
+  selectedIds,
+  tools,
+  onToggle
+}: {
+  selectedIds: DeveloperToolId[];
+  tools: DeveloperTool[];
+  onToggle: (toolId: DeveloperToolId) => void;
+}) => {
+  return (
+    <div className="strategy-block agent-tools-block">
+      <div className="strategy-heading">
+        <div>
+          <h3>Developer tools</h3>
+          <p className="muted compact-note">Install extra runtimes and command line tools for common projects.</p>
+        </div>
+      </div>
+      <div className="agent-tool-list">
+        {tools.map((tool) => (
+          <div className="agent-tool-row" key={tool.id}>
+            <div>
+              <strong>{tool.label}</strong>
+              <small>{tool.description}</small>
+              <code>{tool.command}</code>
             </div>
             <ToggleSwitch
               checked={selectedIds.includes(tool.id)}
@@ -1388,6 +1520,7 @@ const CommandPanel = ({
   javaEnabled,
   javaStrategy,
   nodeEnabled,
+  nodePackageManager,
   nodeStrategy,
   prepareSystem,
   pythonEnabled,
@@ -1395,6 +1528,7 @@ const CommandPanel = ({
   repoRef,
   runInTmux,
   selectedAgentTools,
+  selectedDeveloperTools,
   selectedPackageNames,
   targetVersion,
   setAssumeYes,
@@ -1411,6 +1545,7 @@ const CommandPanel = ({
   javaEnabled: boolean;
   javaStrategy: JavaStrategyId;
   nodeEnabled: boolean;
+  nodePackageManager: NodePackageManagerId;
   nodeStrategy: NodeStrategyId;
   prepareSystem: boolean;
   pythonEnabled: boolean;
@@ -1418,6 +1553,7 @@ const CommandPanel = ({
   repoRef: string;
   runInTmux: boolean;
   selectedAgentTools: AgentTool[];
+  selectedDeveloperTools: DeveloperTool[];
   selectedPackageNames: string[];
   targetVersion: string;
   setAssumeYes: (value: boolean) => void;
@@ -1452,9 +1588,14 @@ const CommandPanel = ({
       <p className="muted compact-note">Target version: {targetVersion || "not set"}</p>
       <p className="muted compact-note">Docker install: {dockerEnabled ? "on" : "off"}</p>
       <p className="muted compact-note">Node setup: {nodeEnabled ? nodeStrategy : "off"}</p>
+      <p className="muted compact-note">Node package manager: {nodeEnabled ? nodePackageManager : "off"}</p>
       <p className="muted compact-note">
         Agent CLIs:{" "}
         {nodeEnabled && selectedAgentTools.length > 0 ? selectedAgentTools.map((tool) => tool.label).join(", ") : "off"}
+      </p>
+      <p className="muted compact-note">
+        Developer tools:{" "}
+        {selectedDeveloperTools.length > 0 ? selectedDeveloperTools.map((tool) => tool.label).join(", ") : "off"}
       </p>
       <p className="muted compact-note">Python setup: {pythonEnabled ? pythonStrategy : "off"}</p>
       <p className="muted compact-note">Java install: {javaEnabled ? javaStrategy : "off"}</p>
@@ -1491,6 +1632,7 @@ const SummaryView = ({
   javaEnabled,
   javaStrategy,
   nodeEnabled,
+  nodePackageManager,
   nodeStrategy,
   powerlevel10k,
   prepareSystem,
@@ -1498,6 +1640,7 @@ const SummaryView = ({
   pythonStrategy,
   runInTmux,
   selectedAgentTools,
+  selectedDeveloperTools,
   selectedPackageNames,
   stepSelection,
   targetVersion
@@ -1510,6 +1653,7 @@ const SummaryView = ({
   javaEnabled: boolean;
   javaStrategy: JavaStrategyId;
   nodeEnabled: boolean;
+  nodePackageManager: NodePackageManagerId;
   nodeStrategy: NodeStrategyId;
   powerlevel10k: boolean;
   prepareSystem: boolean;
@@ -1517,6 +1661,7 @@ const SummaryView = ({
   pythonStrategy: PythonStrategyId;
   runInTmux: boolean;
   selectedAgentTools: AgentTool[];
+  selectedDeveloperTools: DeveloperTool[];
   selectedPackageNames: string[];
   stepSelection: Record<InstallStepKey, boolean>;
   targetVersion: string;
@@ -1559,6 +1704,10 @@ const SummaryView = ({
             <dd>{nodeEnabled ? nodeStrategy : "off"}</dd>
           </div>
           <div>
+            <dt>Node package manager</dt>
+            <dd>{nodeEnabled ? nodePackageManager : "off"}</dd>
+          </div>
+          <div>
             <dt>Agent CLIs</dt>
             <dd>
               {nodeEnabled && selectedAgentTools.length > 0
@@ -1573,6 +1722,12 @@ const SummaryView = ({
           <div>
             <dt>Java strategy</dt>
             <dd>{javaEnabled ? javaStrategy : "off"}</dd>
+          </div>
+          <div>
+            <dt>Developer tools</dt>
+            <dd>
+              {selectedDeveloperTools.length > 0 ? selectedDeveloperTools.map((tool) => tool.label).join(", ") : "off"}
+            </dd>
           </div>
           <div>
             <dt>Powerlevel10k</dt>

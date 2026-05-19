@@ -1,16 +1,20 @@
 import {
   AGENT_TOOL_IDS,
+  DEVELOPER_TOOL_IDS,
   DOCKER_STRATEGY_IDS,
   INSTALL_STEP_KEYS,
   JAVA_STRATEGY_IDS,
   NODE_STRATEGY_IDS,
+  NODE_PACKAGE_MANAGER_IDS,
   OS_IDS,
   PYTHON_STRATEGY_IDS,
   type AgentToolId,
   type CommandOsId,
+  type DeveloperToolId,
   type DockerStrategyId,
   type InstallStepKey,
   type JavaStrategyId,
+  type NodePackageManagerId,
   type NodeStrategyId,
   type PythonStrategyId
 } from "./ids.js";
@@ -22,6 +26,14 @@ export const DEFAULT_REF = "main";
 export const AGENT_TOOL_PACKAGES: Record<AgentToolId, string> = {
   [AGENT_TOOL_IDS.CLAUDE_CODE]: "@anthropic-ai/claude-code",
   [AGENT_TOOL_IDS.OPENAI_CODEX]: "@openai/codex"
+};
+
+export const MISE_DEVELOPER_TOOLS: Partial<Record<DeveloperToolId, string>> = {
+  [DEVELOPER_TOOL_IDS.GO]: "go@latest",
+  [DEVELOPER_TOOL_IDS.BUN]: "bun@latest",
+  [DEVELOPER_TOOL_IDS.DENO]: "deno@latest",
+  [DEVELOPER_TOOL_IDS.RUBY]: "ruby@latest",
+  [DEVELOPER_TOOL_IDS.DOTNET]: "dotnet@latest"
 };
 
 export type CommandTarget = {
@@ -61,7 +73,7 @@ export const installSteps: Array<{
   {
     key: INSTALL_STEP_KEYS.TOOLS,
     title: "Runtime tools",
-    description: "uv, Rust stable, rustfmt, clippy, and selected language runtimes.",
+    description: "uv, language runtimes, developer tools, and selected CLIs.",
     skipFlag: "--skip-tools"
   }
 ];
@@ -77,10 +89,12 @@ export type BuildCommandInput = {
   dockerEnabled: boolean;
   dockerStrategy: DockerStrategyId;
   nodeStrategy: NodeStrategyId;
+  nodePackageManager: NodePackageManagerId;
   pythonStrategy: PythonStrategyId;
   javaEnabled: boolean;
   javaStrategy: JavaStrategyId;
   selectedAgentToolIds: AgentToolId[];
+  selectedDeveloperToolIds: DeveloperToolId[];
   powerlevel10k: boolean;
   prepareSystem: boolean;
   runInTmux: boolean;
@@ -129,8 +143,16 @@ export const buildCommands = (input: BuildCommandInput): CommandSet => {
 
   if (input.stepSelection[INSTALL_STEP_KEYS.TOOLS]) {
     flags.push("--node-strategy", input.nodeStrategy);
+    if (input.nodeStrategy !== NODE_STRATEGY_IDS.NONE) {
+      flags.push("--node-package-manager", input.nodePackageManager);
+    }
     flags.push("--python-strategy", input.pythonStrategy);
     flags.push("--java-strategy", input.javaEnabled ? input.javaStrategy : JAVA_STRATEGY_IDS.NONE);
+    if (input.selectedDeveloperToolIds.length > 0) {
+      flags.push("--developer-tools", input.selectedDeveloperToolIds.join(","));
+    } else {
+      flags.push("--no-developer-tools");
+    }
     if (input.selectedAgentToolIds.length > 0) {
       flags.push("--agent-tools", input.selectedAgentToolIds.join(","));
     } else {
@@ -157,9 +179,11 @@ export const buildCommands = (input: BuildCommandInput): CommandSet => {
       input.selectedPackageNames,
       input.dockerEnabled ? input.dockerStrategy : DOCKER_STRATEGY_IDS.NONE,
       input.nodeStrategy,
+      input.nodePackageManager,
       input.pythonStrategy,
       input.javaEnabled ? input.javaStrategy : JAVA_STRATEGY_IDS.NONE,
-      input.selectedAgentToolIds
+      input.selectedAgentToolIds,
+      input.selectedDeveloperToolIds
     )
   };
 };
@@ -193,9 +217,11 @@ export const buildPackageCommand = (
   packages: string[],
   dockerStrategy: DockerStrategyId,
   nodeStrategy: NodeStrategyId,
+  nodePackageManager: NodePackageManagerId,
   pythonStrategy: PythonStrategyId,
   javaStrategy: JavaStrategyId,
-  selectedAgentToolIds: AgentToolId[] = []
+  selectedAgentToolIds: AgentToolId[] = [],
+  selectedDeveloperToolIds: DeveloperToolId[] = []
 ) => {
   const installLine =
     osId === OS_IDS.UBUNTU
@@ -212,11 +238,23 @@ export const buildPackageCommand = (
   const targetLine = targetVersion.trim() ? `# Target OS version: ${targetVersion.trim()}` : "";
   const dockerLine = dockerPreviewLine(osId, dockerStrategy);
   const nodeLine = nodePreviewLine(nodeStrategy);
+  const nodePackageManagerLine = nodePackageManagerPreviewLine(nodeStrategy, nodePackageManager);
   const agentToolsLine = agentToolsPreviewLine(nodeStrategy, selectedAgentToolIds);
+  const developerToolsLine = developerToolsPreviewLine(osId, selectedDeveloperToolIds);
   const pythonLine = pythonPreviewLine(pythonStrategy);
   const javaLine = javaPreviewLine(osId, javaStrategy);
 
-  return [targetLine, installLine, dockerLine, nodeLine, agentToolsLine, pythonLine, javaLine]
+  return [
+    targetLine,
+    installLine,
+    dockerLine,
+    nodeLine,
+    nodePackageManagerLine,
+    agentToolsLine,
+    developerToolsLine,
+    pythonLine,
+    javaLine
+  ]
     .filter(Boolean)
     .join("\n");
 };
@@ -249,6 +287,25 @@ const nodePreviewLine = (strategy: NodeStrategyId) => {
   return "curl -fsSL https://mise.run | sh && mise use -g node@lts && mise settings add idiomatic_version_file_enable_tools node";
 };
 
+const nodePackageManagerPreviewLine = (nodeStrategy: NodeStrategyId, packageManager: NodePackageManagerId) => {
+  if (nodeStrategy === NODE_STRATEGY_IDS.NONE) {
+    return "";
+  }
+
+  if (packageManager === NODE_PACKAGE_MANAGER_IDS.NPM) {
+    return "# Use npm bundled with Node";
+  }
+
+  const corepackCommand =
+    packageManager === NODE_PACKAGE_MANAGER_IDS.PNPM
+      ? "corepack enable pnpm && corepack prepare pnpm@latest --activate"
+      : "corepack enable yarn && corepack prepare yarn@stable --activate";
+
+  return nodeStrategy === NODE_STRATEGY_IDS.MISE
+    ? `mise exec node@lts -- sh -lc ${shellQuote(corepackCommand)}`
+    : corepackCommand;
+};
+
 const agentToolsPreviewLine = (nodeStrategy: NodeStrategyId, selectedAgentToolIds: AgentToolId[]) => {
   const packages = selectedAgentToolIds.map((toolId) => AGENT_TOOL_PACKAGES[toolId]).filter(Boolean);
   if (packages.length === 0) {
@@ -263,6 +320,28 @@ const agentToolsPreviewLine = (nodeStrategy: NodeStrategyId, selectedAgentToolId
   return nodeStrategy === NODE_STRATEGY_IDS.MISE
     ? `mise exec node@lts -- npm install -g ${installArgs}`
     : `npm install -g ${installArgs}`;
+};
+
+const developerToolsPreviewLine = (osId: CommandOsId, selectedDeveloperToolIds: DeveloperToolId[]) => {
+  if (selectedDeveloperToolIds.length === 0) {
+    return "# Developer tool install skipped";
+  }
+
+  const lines = selectedDeveloperToolIds.map((toolId) => {
+    if (toolId === DEVELOPER_TOOL_IDS.RUST) {
+      return "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile default";
+    }
+    if (toolId === DEVELOPER_TOOL_IDS.GITHUB_CLI) {
+      return osId === OS_IDS.MACOS
+        ? "brew install gh"
+        : osId === OS_IDS.UBUNTU
+          ? "# GitHub CLI: add official repository, then sudo apt install -y gh"
+          : "sudo dnf install -y gh";
+    }
+    return `mise use -g ${MISE_DEVELOPER_TOOLS[toolId] ?? `${toolId}@latest`}`;
+  });
+
+  return lines.join("\n");
 };
 
 const pythonPreviewLine = (strategy: PythonStrategyId) => {

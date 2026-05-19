@@ -1,5 +1,5 @@
 import catalogData from "../../packages/catalog.json";
-import type { AgentToolId, OsId } from "./ids";
+import type { AgentToolId, DeveloperToolId, NodePackageManagerId, OsId } from "./ids";
 
 export type OsVersion = {
   value: string;
@@ -50,11 +50,27 @@ export type AgentTool = {
   description: string;
 };
 
+export type DeveloperTool = {
+  id: DeveloperToolId;
+  label: string;
+  command: string;
+  defaultSelected: boolean;
+  description: string;
+};
+
+export type NodePackageManager = {
+  id: NodePackageManagerId;
+  label: string;
+  description: string;
+};
+
 type Catalog = {
   osTargets: OsTarget[];
   groups: PackageGroup[];
   packages: CatalogPackage[];
   agentTools: AgentTool[];
+  developerTools: DeveloperTool[];
+  nodePackageManagers: NodePackageManager[];
   strategies: {
     docker: Strategy[];
     node: Strategy[];

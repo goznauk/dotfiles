@@ -59,10 +59,16 @@ Tool choices:
 ./setup.sh ubuntu --yes --docker-strategy none
 ./setup.sh ubuntu --yes --node-strategy mise
 ./setup.sh ubuntu --yes --node-strategy nvm
+./setup.sh ubuntu --yes --node-package-manager pnpm
+./setup.sh ubuntu --yes --node-package-manager yarn
+./setup.sh ubuntu --yes --node-package-manager npm
 ./setup.sh ubuntu --yes --python-strategy system-uv
 ./setup.sh ubuntu --yes --python-strategy mise
 ./setup.sh ubuntu --yes --java-strategy mise-temurin-21
 ./setup.sh ubuntu --yes --java-strategy distro-openjdk-21
+./setup.sh ubuntu --yes --developer-tools rust,go,bun,deno,gh
+./setup.sh ubuntu --yes --developer-tools rust,go,bun,deno,gh,ruby,dotnet
+./setup.sh ubuntu --yes --no-developer-tools
 ./setup.sh ubuntu --yes --agent-tools claude-code,openai-codex
 ./setup.sh ubuntu --yes --no-agent-tools
 ```
@@ -81,7 +87,7 @@ The installer has four main steps:
 1. Apt packages.
 2. Shell setup.
 3. Dotfile links.
-4. uv, Rust, language runtimes, and coding agent CLIs.
+4. uv, language runtimes, developer tools, and coding agent CLIs.
 
 Use `--skip-apt`, `--skip-shell`, `--skip-dotfiles`, or `--skip-tools` to skip a
 step.
@@ -119,8 +125,20 @@ Node:
 
 - Default: Node LTS through `mise`.
 - Optional: `nvm` with `--node-strategy nvm`.
+- Default package manager: `pnpm` through Corepack.
+- Other package manager choices: `yarn` or `npm`.
 - The zsh config activates `mise` when it exists.
 - The installer enables `.nvmrc` and `.node-version` support for `mise`.
+
+Developer tools:
+
+- Default on: Rust, Go, Bun, Deno, and GitHub CLI.
+- Optional off by default: Ruby and dotnet.
+- Rust installs through `rustup`.
+- Go, Bun, Deno, Ruby, and dotnet install through `mise`.
+- GitHub CLI installs from the official GitHub CLI Linux repository.
+- Use `--no-developer-tools` to skip all of them.
+- Use `--developer-tools` with a comma-separated list to choose a smaller set.
 
 Coding agent CLIs:
 

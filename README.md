@@ -38,8 +38,8 @@ Preview the Ubuntu plan without changing the machine:
 ./setup.sh ubuntu --dry-run --target-version 26.04
 ```
 
-See [Ubuntu setup](./Ubuntu/README.md) for package lists, flags, Git identity,
-Vim, tmux, Docker, and OS notes.
+See [Ubuntu setup](./Ubuntu/README.md) for package lists, runtime tools, Node
+package manager choices, Git identity, Vim, tmux, Docker, and OS notes.
 
 ## Web chooser
 

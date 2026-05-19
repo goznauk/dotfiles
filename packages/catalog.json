@@ -655,6 +655,74 @@
       "description": "OpenAI coding agent CLI. Installs through npm after Node is ready."
     }
   ],
+  "developerTools": [
+    {
+      "id": "rust",
+      "label": "Rust",
+      "command": "rustup",
+      "defaultSelected": true,
+      "description": "Rust stable toolchain with rustfmt and clippy."
+    },
+    {
+      "id": "go",
+      "label": "Go",
+      "command": "go",
+      "defaultSelected": true,
+      "description": "Go runtime and toolchain through mise."
+    },
+    {
+      "id": "bun",
+      "label": "Bun",
+      "command": "bun",
+      "defaultSelected": true,
+      "description": "Bun JavaScript runtime and package tool through mise."
+    },
+    {
+      "id": "deno",
+      "label": "Deno",
+      "command": "deno",
+      "defaultSelected": true,
+      "description": "Deno TypeScript runtime through mise."
+    },
+    {
+      "id": "gh",
+      "label": "GitHub CLI",
+      "command": "gh",
+      "defaultSelected": true,
+      "description": "GitHub command line tool from the official Linux repository."
+    },
+    {
+      "id": "ruby",
+      "label": "Ruby",
+      "command": "ruby",
+      "defaultSelected": false,
+      "description": "Ruby runtime through mise. Off by default unless Ruby work is needed."
+    },
+    {
+      "id": "dotnet",
+      "label": "dotnet",
+      "command": "dotnet",
+      "defaultSelected": false,
+      "description": "dotnet SDK through mise. Off by default unless dotnet work is needed."
+    }
+  ],
+  "nodePackageManagers": [
+    {
+      "id": "pnpm",
+      "label": "pnpm",
+      "description": "Default Node package manager. Enabled through Corepack."
+    },
+    {
+      "id": "yarn",
+      "label": "Yarn",
+      "description": "Alternative Node package manager. Enabled through Corepack."
+    },
+    {
+      "id": "npm",
+      "label": "npm only",
+      "description": "Use the npm that ships with Node."
+    }
+  ],
   "strategies": {
     "docker": [
       {

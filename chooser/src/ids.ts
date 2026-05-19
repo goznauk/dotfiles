@@ -51,6 +51,14 @@ export const NODE_STRATEGY_IDS = {
 
 export type NodeStrategyId = (typeof NODE_STRATEGY_IDS)[keyof typeof NODE_STRATEGY_IDS];
 
+export const NODE_PACKAGE_MANAGER_IDS = {
+  PNPM: "pnpm",
+  YARN: "yarn",
+  NPM: "npm"
+} as const;
+
+export type NodePackageManagerId = (typeof NODE_PACKAGE_MANAGER_IDS)[keyof typeof NODE_PACKAGE_MANAGER_IDS];
+
 export const PYTHON_STRATEGY_IDS = {
   SYSTEM_UV: "system-uv",
   MISE: "mise",
@@ -73,6 +81,18 @@ export const AGENT_TOOL_IDS = {
 } as const;
 
 export type AgentToolId = (typeof AGENT_TOOL_IDS)[keyof typeof AGENT_TOOL_IDS];
+
+export const DEVELOPER_TOOL_IDS = {
+  RUST: "rust",
+  GO: "go",
+  BUN: "bun",
+  DENO: "deno",
+  GITHUB_CLI: "gh",
+  RUBY: "ruby",
+  DOTNET: "dotnet"
+} as const;
+
+export type DeveloperToolId = (typeof DEVELOPER_TOOL_IDS)[keyof typeof DEVELOPER_TOOL_IDS];
 
 export const CONFIG_KEYS = {
   ZSHRC: "zshrc",

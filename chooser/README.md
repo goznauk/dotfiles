@@ -54,6 +54,8 @@ Use this before changing package data or command generation.
 - Package search and package group expansion.
 - Docker or Podman strategy choices.
 - Node, Python, and Java strategy choices.
+- Node package manager choices. `pnpm` is the default.
+- Developer tool toggles for Rust, Go, Bun, Deno, GitHub CLI, Ruby, and dotnet.
 - Coding agent CLI choices after Node setup.
 - `.zshrc`, `.vimrc`, `.tmux.conf`, `.gitconfig`, and `htoprc` block editing.
 - Powerlevel10k setting next to `.zshrc`.

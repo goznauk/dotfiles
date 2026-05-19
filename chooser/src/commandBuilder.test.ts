@@ -9,9 +9,11 @@ import {
 } from "./commandBuilder.js";
 import {
   AGENT_TOOL_IDS,
+  DEVELOPER_TOOL_IDS,
   DOCKER_STRATEGY_IDS,
   JAVA_STRATEGY_IDS,
   NODE_STRATEGY_IDS,
+  NODE_PACKAGE_MANAGER_IDS,
   OS_IDS,
   PYTHON_STRATEGY_IDS
 } from "./ids.js";
@@ -50,10 +52,18 @@ const baseInput: BuildCommandInput = {
   dockerEnabled: true,
   dockerStrategy: DOCKER_STRATEGY_IDS.OFFICIAL,
   nodeStrategy: NODE_STRATEGY_IDS.MISE,
+  nodePackageManager: NODE_PACKAGE_MANAGER_IDS.PNPM,
   pythonStrategy: PYTHON_STRATEGY_IDS.SYSTEM_UV,
   javaEnabled: false,
   javaStrategy: JAVA_STRATEGY_IDS.MISE_TEMURIN_21,
   selectedAgentToolIds: [AGENT_TOOL_IDS.CLAUDE_CODE, AGENT_TOOL_IDS.OPENAI_CODEX],
+  selectedDeveloperToolIds: [
+    DEVELOPER_TOOL_IDS.RUST,
+    DEVELOPER_TOOL_IDS.GO,
+    DEVELOPER_TOOL_IDS.BUN,
+    DEVELOPER_TOOL_IDS.DENO,
+    DEVELOPER_TOOL_IDS.GITHUB_CLI
+  ],
   powerlevel10k: true,
   prepareSystem: true,
   runInTmux: true,
@@ -94,6 +104,16 @@ assertIncludes(plainCommands.primary, "'--target-version' '26.04'", "primary com
 assertIncludes(plainCommands.primary, "'--apt-packages' 'git,zsh'", "primary command includes selected packages");
 assertIncludes(
   plainCommands.primary,
+  "'--node-package-manager' 'pnpm'",
+  "primary command includes Node package manager"
+);
+assertIncludes(
+  plainCommands.primary,
+  "'--developer-tools' 'rust,go,bun,deno,gh'",
+  "primary command includes selected developer tools"
+);
+assertIncludes(
+  plainCommands.primary,
   "'--agent-tools' 'claude-code,openai-codex'",
   "primary command includes selected agent tools"
 );
@@ -130,6 +150,24 @@ assertIncludes(
   "mise exec node@lts -- npm install -g '@anthropic-ai/claude-code' '@openai/codex'",
   "package preview includes selected agent CLIs"
 );
+assertIncludes(
+  noPackageCommands.packageCommand,
+  "mise exec node@lts -- sh -lc 'corepack enable pnpm && corepack prepare pnpm@latest --activate'",
+  "package preview enables pnpm through corepack"
+);
+assertIncludes(noPackageCommands.packageCommand, "mise use -g go@latest", "package preview includes Go through mise");
+assertIncludes(noPackageCommands.packageCommand, "mise use -g bun@latest", "package preview includes Bun through mise");
+assertIncludes(
+  noPackageCommands.packageCommand,
+  "mise use -g deno@latest",
+  "package preview includes Deno through mise"
+);
+assertIncludes(
+  noPackageCommands.packageCommand,
+  "https://sh.rustup.rs",
+  "package preview includes Rust through rustup"
+);
+assertIncludes(noPackageCommands.packageCommand, "GitHub CLI", "package preview includes GitHub CLI note");
 
 const skippedPackageStep = buildCommands({
   ...baseInput,
@@ -148,8 +186,11 @@ assertIncludes(
     ["git", "node"],
     DOCKER_STRATEGY_IDS.NONE,
     NODE_STRATEGY_IDS.NVM,
+    NODE_PACKAGE_MANAGER_IDS.YARN,
     PYTHON_STRATEGY_IDS.MISE,
-    JAVA_STRATEGY_IDS.NONE
+    JAVA_STRATEGY_IDS.NONE,
+    [],
+    [DEVELOPER_TOOL_IDS.GITHUB_CLI]
   ),
   "brew install 'git' 'node'",
   "macOS preview uses brew"
@@ -161,8 +202,11 @@ assertIncludes(
     ["git"],
     DOCKER_STRATEGY_IDS.PODMAN,
     NODE_STRATEGY_IDS.MISE,
+    NODE_PACKAGE_MANAGER_IDS.NPM,
     PYTHON_STRATEGY_IDS.SYSTEM_UV,
-    JAVA_STRATEGY_IDS.DISTRO_OPENJDK_21
+    JAVA_STRATEGY_IDS.DISTRO_OPENJDK_21,
+    [],
+    [DEVELOPER_TOOL_IDS.GITHUB_CLI]
   ),
   "sudo dnf install -y podman podman-docker",
   "RHEL podman preview uses dnf"
