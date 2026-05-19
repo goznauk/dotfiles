@@ -963,11 +963,22 @@ input[type="checkbox"] {
 }
 
 .config-tabs {
+  flex-wrap: nowrap;
   margin-bottom: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.config-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .config-tabs button {
+  flex: 0 0 auto;
+  min-height: 38px;
   padding: 0.5rem 0.72rem;
+  white-space: nowrap;
 }
 
 .preference-card,
@@ -999,6 +1010,10 @@ input[type="checkbox"] {
 
 .selected-strategy-card button {
   flex: 0 0 auto;
+}
+
+.config-preferences .toggle-switch {
+  align-self: center;
 }
 
 .agent-tools-block {
@@ -1207,22 +1222,22 @@ pre {
 
 .config-builder {
   display: grid;
-  grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.98fr);
+  grid-template-columns: minmax(380px, 1.35fr) minmax(230px, 0.65fr);
   gap: 18px;
   align-items: start;
   min-width: 0;
 }
 
-.config-code-pane {
+.config-block-list {
   width: 100%;
   max-width: 100%;
   min-width: 0;
   display: grid;
   gap: 0;
-  border: 1px solid var(--code-control-border);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--code-panel-bg);
-  color: var(--code-control-text);
+  background: var(--surface);
+  color: var(--text);
   overflow: hidden;
 }
 
@@ -1232,20 +1247,21 @@ pre {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid var(--code-border);
-  background: var(--code-header-bg);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-soft);
   padding: 10px 14px;
 }
 
 .code-pane-header span {
-  color: var(--code-muted);
+  color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
 }
 
 .editor-block {
   min-width: 0;
-  border-bottom: 1px solid var(--code-border);
+  border-bottom: 1px solid var(--divider);
+  background: var(--surface);
   cursor: grab;
 }
 
@@ -1254,11 +1270,12 @@ pre {
 }
 
 .editor-block.active {
-  background: var(--code-active-bg);
+  background: var(--selected-bg);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .editor-block.disabled {
-  opacity: 0.58;
+  background: var(--disabled-bg);
 }
 
 .editor-block.dragging {
@@ -1267,48 +1284,76 @@ pre {
 
 .editor-block-header {
   min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: start;
-  padding: 9px 12px 7px;
+  padding: 7px;
 }
 
 .block-title-button {
-  display: block;
+  width: 100%;
+  min-height: 70px;
+  display: grid;
+  gap: 6px;
   min-width: 0;
   border: 0;
+  border-radius: 6px;
   background: transparent;
-  color: var(--code-text);
-  padding: 0;
+  color: var(--text);
+  padding: 8px;
   text-align: left;
 }
 
 .block-title-button:hover {
-  background: transparent;
+  background: var(--button-hover-bg);
 }
 
-.block-title-button span,
-.block-title-button small {
-  display: block;
+.block-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
 }
 
-.block-title-button span {
+.block-card-title-row > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.86rem;
   font-weight: 850;
 }
 
 .block-title-button small {
-  margin-top: 0.18rem;
-  color: var(--code-muted);
+  display: block;
+  color: var(--muted);
   font-size: 0.75rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
-.block-title-button .block-kind-pill {
+.block-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.block-state-pill {
+  flex: 0 0 auto;
   display: inline-flex;
-  margin-top: 0.42rem;
+  align-items: center;
+  min-height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-soft);
+  padding: 0.08rem 0.46rem;
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.block-state-pill.on {
+  border-color: var(--accent-border);
+  background: var(--accent-subtle);
+  color: var(--accent-text);
 }
 
 .block-kind-pill,
@@ -1369,19 +1414,19 @@ pre {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border-color: var(--code-control-border);
+  border-color: var(--border);
   border-radius: 999px;
-  background: var(--code-control-bg);
-  color: var(--code-control-text);
+  background: var(--surface);
+  color: var(--text-soft);
   font-size: 0.76rem;
   font-weight: 850;
   padding: 0.24rem 0.38rem;
 }
 
 .block-toggle.on {
-  border-color: var(--accent-bright);
-  background: var(--code-toggle-bg);
-  color: var(--code-toggle-text);
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  color: var(--accent-text);
 }
 
 .block-toggle strong {
@@ -1457,10 +1502,11 @@ kbd {
 }
 
 .block-detail {
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--surface-soft);
-  padding: 16px;
+  background: var(--surface);
+  padding: 18px;
 }
 
 .block-detail-heading {
@@ -1471,6 +1517,13 @@ kbd {
   margin-bottom: 12px;
 }
 
+.block-detail-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .block-position {
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -1479,6 +1532,10 @@ kbd {
   padding: 0.2rem 0.5rem;
   font-size: 0.76rem;
   font-weight: 850;
+}
+
+.detail-toggle {
+  min-height: 32px;
 }
 
 .block-meta-row {
@@ -1493,6 +1550,15 @@ kbd {
   background: transparent;
   color: var(--text-soft);
   font-weight: 750;
+}
+
+.editor-label {
+  display: block;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-transform: uppercase;
 }
 
 .order-warning,
@@ -1544,6 +1610,7 @@ kbd {
 .block-editor,
 .config-editor {
   width: 100%;
+  max-width: 100%;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--input-bg);
@@ -1554,11 +1621,13 @@ kbd {
   padding: 16px;
   resize: vertical;
   tab-size: 2;
+  overflow: auto;
+  white-space: pre;
 }
 
 .block-editor {
-  min-height: 260px;
-  margin-top: 14px;
+  min-height: 320px;
+  margin-top: 8px;
 }
 
 .config-editor {
@@ -1591,6 +1660,40 @@ kbd {
 .wide-button {
   width: 100%;
   margin-top: 14px;
+}
+
+.config-output-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.config-output-actions button {
+  width: 100%;
+}
+
+.config-output-details {
+  margin-top: 14px;
+  border-top: 1px solid var(--divider);
+  padding-top: 12px;
+}
+
+.config-output-details summary {
+  cursor: pointer;
+  color: var(--text-soft);
+  font-weight: 850;
+}
+
+.config-output-details pre {
+  margin-top: 12px;
+  max-height: 260px;
+  white-space: pre;
+  word-break: normal;
+}
+
+.config-output-details .config-editor {
+  min-height: 260px;
+  margin-top: 12px;
 }
 
 .summary-grid {
@@ -1795,6 +1898,7 @@ kbd {
   .version-button,
   .target-change-button,
   .toggle-switch,
+  .config-tabs button,
   .icon-button,
   .block-toggle {
     min-height: 44px;
@@ -1813,6 +1917,40 @@ kbd {
 
   .summary-section .field {
     gap: 6px;
+  }
+
+  .config-tabs {
+    gap: 6px;
+    scroll-snap-type: x proximity;
+  }
+
+  .config-tabs button {
+    scroll-snap-align: start;
+  }
+
+  .config-preferences .preference-card {
+    padding: 10px;
+  }
+
+  .config-preferences .toggle-switch {
+    align-self: flex-start;
+  }
+
+  .block-detail {
+    padding: 14px;
+  }
+
+  .block-detail-heading {
+    display: grid;
+  }
+
+  .block-detail-controls {
+    justify-content: flex-start;
+  }
+
+  .block-editor {
+    min-height: 250px;
+    font-size: 0.78rem;
   }
 
   .summary-section .mini-summary {

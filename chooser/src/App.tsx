@@ -227,6 +227,8 @@ export const App = () => {
   const [activeConfigBlockIds, setActiveConfigBlockIds] =
     useState<Record<ConfigKey, string>>(createInitialActiveBlocks);
   const [draggedBlock, setDraggedBlock] = useState<DraggedBlock>(null);
+  const configTabRefs = useRef<Partial<Record<ConfigKey, HTMLButtonElement | null>>>({});
+  const configKeys = Object.keys(configDefinitions) as ConfigKey[];
 
   useEffect(() => {
     document.documentElement.dataset.theme = themeMode;
@@ -237,6 +239,10 @@ export const App = () => {
       // Ignore private browsing or blocked storage.
     }
   }, [themeMode]);
+
+  useEffect(() => {
+    configTabRefs.current[activeConfig]?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeConfig]);
 
   useEffect(() => {
     const sections = sectionNavItems.map((item) => item.id);
@@ -485,6 +491,30 @@ export const App = () => {
     }
     updateConfigBlock(blockId, (block) => ({ ...block, content: originalBlock.content }));
   };
+
+  const handleConfigTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, key: ConfigKey) => {
+    const currentIndex = configKeys.indexOf(key);
+    const lastIndex = configKeys.length - 1;
+    let nextIndex: number;
+
+    if (event.key === "ArrowRight") {
+      nextIndex = currentIndex === lastIndex ? 0 : currentIndex + 1;
+    } else if (event.key === "ArrowLeft") {
+      nextIndex = currentIndex === 0 ? lastIndex : currentIndex - 1;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = lastIndex;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    const nextConfig = configKeys[nextIndex];
+    setActiveConfig(nextConfig);
+    configTabRefs.current[nextConfig]?.focus();
+  };
+
   const copiedMessage = copied ? `Copied ${copiedLabels[copied] ?? copied.replace(/-/g, " ")}.` : "";
   const statusMessage = copyError ?? copiedMessage;
 
@@ -694,22 +724,28 @@ export const App = () => {
           </div>
         </section>
 
-        <section className="main-grid scroll-section" id={sectionAnchorId(VIEW_IDS.CONFIGS)}>
+        <section className="main-grid scroll-section config-section" id={sectionAnchorId(VIEW_IDS.CONFIGS)}>
           <div className="content-stack">
-            <section className="panel">
+            <section className="panel config-panel">
               <div className="panel-heading">
                 <div>
                   <p className="section-label">Config files</p>
                   <h2>Edit generated config content</h2>
                 </div>
               </div>
-              <div className="config-tabs">
-                {(Object.keys(configDefinitions) as ConfigKey[]).map((key) => (
+              <div className="config-tabs" role="tablist" aria-label="Config files">
+                {configKeys.map((key) => (
                   <button
-                    aria-pressed={activeConfig === key}
+                    aria-controls="config-editor-panel"
+                    aria-selected={activeConfig === key}
                     className={activeConfig === key ? "active" : ""}
                     key={key}
+                    ref={(element) => {
+                      configTabRefs.current[key] = element;
+                    }}
+                    role="tab"
                     type="button"
+                    onKeyDown={(event) => handleConfigTabKeyDown(event, key)}
                     onClick={() => setActiveConfig(key)}
                   >
                     {configDefinitions[key].title}
@@ -728,7 +764,7 @@ export const App = () => {
                 blocks={configBlocks[activeConfig]}
                 configKey={activeConfig}
                 draggedBlock={draggedBlock}
-                generatedContent={configContents[activeConfig]}
+                editorId="config-editor-panel"
                 onActiveBlockChange={(blockId) =>
                   setActiveConfigBlockIds((current) => ({ ...current, [activeConfig]: blockId }))
                 }
@@ -748,19 +784,29 @@ export const App = () => {
           <aside className="panel sticky-panel">
             <p className="section-label">Config output</p>
             <h2>{configDefinitions[activeConfig].path}</h2>
-            <CommandBlock
-              title="Write command"
-              command={configCommand}
-              copied={copied === "config-command"}
-              onCopy={() => copyText("config-command", configCommand)}
-            />
-            <button
-              className="wide-button"
-              type="button"
-              onClick={() => copyText("config-content", configContents[activeConfig])}
-            >
-              {copied === "config-content" ? "Copied" : "Copy file content"}
-            </button>
+            <div className="config-output-actions">
+              <button type="button" onClick={() => copyText("config-command", configCommand)}>
+                {copied === "config-command" ? "Copied" : "Copy write command"}
+              </button>
+              <button type="button" onClick={() => copyText("config-content", configContents[activeConfig])}>
+                {copied === "config-content" ? "Copied" : "Copy file content"}
+              </button>
+            </div>
+            <details className="config-output-details">
+              <summary>Preview write command</summary>
+              <pre>{configCommand}</pre>
+            </details>
+            <details className="config-output-details">
+              <summary>Preview generated file</summary>
+              <textarea
+                aria-label={`Generated ${configDefinitions[activeConfig].title} file text`}
+                className="config-editor"
+                readOnly
+                spellCheck={false}
+                value={configContents[activeConfig]}
+                wrap="off"
+              />
+            </details>
           </aside>
         </section>
 
@@ -1471,7 +1517,7 @@ const ConfigBlockEditor = ({
   blocks,
   configKey,
   draggedBlock,
-  generatedContent,
+  editorId,
   onActiveBlockChange,
   onBlockContentChange,
   onBlockDrop,
@@ -1484,7 +1530,7 @@ const ConfigBlockEditor = ({
   blocks: ConfigBlock[];
   configKey: ConfigKey;
   draggedBlock: DraggedBlock;
-  generatedContent: string;
+  editorId: string;
   onActiveBlockChange: (blockId: string) => void;
   onBlockContentChange: (blockId: string, content: string) => void;
   onBlockDrop: (blockId: string) => void;
@@ -1495,30 +1541,78 @@ const ConfigBlockEditor = ({
 }) => {
   const activeBlock = blocks.find((block) => block.id === activeBlockId) ?? blocks[0];
   const activeIndex = blocks.findIndex((block) => block.id === activeBlock.id);
-  const [selectedLine, setSelectedLine] = useState<{ blockId: string; lineIndex: number } | null>(null);
-  const lineStarts = new Map<string, number>();
-  let nextLineNumber = 1;
-
-  for (const block of blocks) {
-    const lineCount = block.content.trimEnd().split(/\r?\n/).length || 1;
-    lineStarts.set(block.id, nextLineNumber);
-    nextLineNumber += lineCount + 1;
-  }
-
-  const selectedLineBlock = selectedLine ? blocks.find((block) => block.id === selectedLine.blockId) : undefined;
-  const detailLineBlock = selectedLineBlock ?? activeBlock;
-  const detailLineIndex = selectedLineBlock && selectedLine ? selectedLine.lineIndex : 0;
-  const selectedLineText = detailLineBlock.content.trimEnd().split(/\r?\n/)[detailLineIndex] || "";
-  const selectedLineNumber = (lineStarts.get(detailLineBlock.id) ?? 1) + detailLineIndex;
   const activePluginNote = pluginNoteFor(configKey, activeBlock.id);
+  const enabledBlockCount = blocks.filter((block) => block.enabled).length;
+  const blockLineCount = (block: ConfigBlock) => block.content.trimEnd().split(/\r?\n/).length || 1;
 
   return (
-    <div className="config-builder">
-      <div className="config-code-pane" aria-label={`${configDefinitions[configKey].title} blocks`}>
+    <div className="config-builder" id={editorId}>
+      <section className="block-detail" aria-labelledby={`block-editor-heading-${activeBlock.id}`}>
+        <div className="block-detail-heading">
+          <div>
+            <p className="section-label">Selected block</p>
+            <h3 id={`block-editor-heading-${activeBlock.id}`}>{activeBlock.title}</h3>
+          </div>
+          <div className="block-detail-controls">
+            <span className="block-position">
+              {activeIndex + 1}/{blocks.length}
+            </span>
+            <button
+              className={activeBlock.enabled ? "block-toggle detail-toggle on" : "block-toggle detail-toggle"}
+              role="switch"
+              aria-checked={activeBlock.enabled}
+              aria-label={`${activeBlock.enabled ? "Disable" : "Enable"} ${activeBlock.title} block`}
+              type="button"
+              onClick={() => onBlockToggle(activeBlock.id)}
+            >
+              <span aria-hidden="true" />
+              <strong>{activeBlock.enabled ? "On" : "Off"}</strong>
+            </button>
+          </div>
+        </div>
+        <p className="muted">{activeBlock.description}</p>
+        <div className="block-meta-row">
+          <span className={`block-kind-pill kind-${activeBlock.kind}`}>{blockKindLabels[activeBlock.kind]}</span>
+          <span className="meta-chip">{blockKindDescriptions[activeBlock.kind]}</span>
+          <span className="meta-chip">{blockLineCount(activeBlock)} lines</span>
+        </div>
+        {activeBlock.risk && <p className="order-warning">{activeBlock.risk}</p>}
+        {activePluginNote && <p className="plugin-note">{activePluginNote}</p>}
+        {activeBlock.shortcuts.length > 0 && <KeycapList keys={activeBlock.shortcuts} />}
+        <label className="editor-label" htmlFor={`block-editor-${activeBlock.id}`}>
+          Block content
+        </label>
+        <textarea
+          aria-label={`Edit ${activeBlock.title} block content`}
+          className="block-editor"
+          id={`block-editor-${activeBlock.id}`}
+          spellCheck={false}
+          value={activeBlock.content}
+          wrap="off"
+          onChange={(event) => onBlockContentChange(activeBlock.id, event.target.value)}
+        />
+        <div className="block-actions" aria-label={`${activeBlock.title} block actions`}>
+          <button type="button" onClick={() => onBlockMove(activeBlock.id, -1)} disabled={activeIndex === 0}>
+            Move up
+          </button>
+          <button
+            type="button"
+            onClick={() => onBlockMove(activeBlock.id, 1)}
+            disabled={activeIndex === blocks.length - 1}
+          >
+            Move down
+          </button>
+          <button type="button" onClick={() => onBlockReset(activeBlock.id)}>
+            Reset block
+          </button>
+        </div>
+      </section>
+
+      <aside className="config-block-list" aria-label={`${configDefinitions[configKey].title} blocks`}>
         <div className="code-pane-header">
           <strong>{configDefinitions[configKey].title}</strong>
           <span>
-            {blocks.filter((block) => block.enabled).length}/{blocks.length} blocks on
+            {enabledBlockCount}/{blocks.length} blocks on
           </span>
         </div>
         {blocks.map((block, index) => (
@@ -1541,135 +1635,31 @@ const ConfigBlockEditor = ({
           >
             <div className="editor-block-header">
               <button
-                aria-pressed={block.id === activeBlock.id}
+                aria-current={block.id === activeBlock.id ? "true" : undefined}
+                aria-label={`Select ${block.title} block, ${blockLineCount(block)} lines, ${
+                  block.enabled ? "on" : "off"
+                }`}
                 className="block-title-button"
                 type="button"
-                onClick={() => {
-                  setSelectedLine(null);
-                  onActiveBlockChange(block.id);
-                }}
+                onClick={() => onActiveBlockChange(block.id)}
               >
-                <span>{block.title}</span>
+                <span className="block-card-title-row">
+                  <span>{block.title}</span>
+                  <span className={block.enabled ? "block-state-pill on" : "block-state-pill"}>
+                    {block.enabled ? "On" : "Off"}
+                  </span>
+                </span>
                 <small>{block.description}</small>
-                <span className={`block-kind-pill kind-${block.kind}`}>{blockKindLabels[block.kind]}</span>
+                <span className="block-card-meta">
+                  <span className={`block-kind-pill kind-${block.kind}`}>{blockKindLabels[block.kind]}</span>
+                  <span className="meta-chip">{blockLineCount(block)} lines</span>
+                  <span className="meta-chip">#{index + 1}</span>
+                </span>
               </button>
-              <div className="editor-block-actions">
-                <button
-                  aria-label={`Move ${block.title} up`}
-                  className="icon-button"
-                  disabled={index === 0}
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onBlockMove(block.id, -1);
-                  }}
-                >
-                  Up
-                </button>
-                <button
-                  aria-label={`Move ${block.title} down`}
-                  className="icon-button"
-                  disabled={index === blocks.length - 1}
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onBlockMove(block.id, 1);
-                  }}
-                >
-                  Down
-                </button>
-                <button
-                  className={block.enabled ? "block-toggle on" : "block-toggle"}
-                  role="switch"
-                  aria-checked={block.enabled}
-                  aria-label={`${block.title} block`}
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onBlockToggle(block.id);
-                  }}
-                >
-                  <span aria-hidden="true" />
-                  <strong>{block.enabled ? "On" : "Off"}</strong>
-                </button>
-              </div>
-            </div>
-            <div className="editor-lines">
-              {(block.content.trimEnd().split(/\r?\n/) || [""]).map((line, lineIndex) => {
-                const lineNumber = (lineStarts.get(block.id) ?? 1) + lineIndex;
-                const lineKey = `${block.id}-${lineIndex}`;
-                const lineActive = selectedLine?.blockId === block.id && selectedLine.lineIndex === lineIndex;
-                return (
-                  <button
-                    aria-label={`Select line ${lineNumber}: ${line || "blank line"}`}
-                    aria-pressed={lineActive}
-                    className={lineActive ? "code-line active" : "code-line"}
-                    key={lineKey}
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setSelectedLine({ blockId: block.id, lineIndex });
-                      onActiveBlockChange(block.id);
-                    }}
-                  >
-                    <span className="line-number">{lineNumber}</span>
-                    <code className="line-text">{line || " "}</code>
-                  </button>
-                );
-              })}
             </div>
           </div>
         ))}
-      </div>
-
-      <section className="block-detail" aria-label="Selected config block">
-        <div className="block-detail-heading">
-          <div>
-            <p className="section-label">Selected block</p>
-            <h3>{activeBlock.title}</h3>
-          </div>
-          <span className="block-position">
-            {activeIndex + 1}/{blocks.length}
-          </span>
-        </div>
-        <p className="muted">{activeBlock.description}</p>
-        <div className="block-meta-row">
-          <span className={`block-kind-pill kind-${activeBlock.kind}`}>{blockKindLabels[activeBlock.kind]}</span>
-          <span className="meta-chip">{blockKindDescriptions[activeBlock.kind]}</span>
-        </div>
-        {activeBlock.risk && <p className="order-warning">{activeBlock.risk}</p>}
-        {activePluginNote && <p className="plugin-note">{activePluginNote}</p>}
-        {activeBlock.shortcuts.length > 0 && <KeycapList keys={activeBlock.shortcuts} />}
-        <div className="selected-line-detail">
-          <span>Line {selectedLineNumber}</span>
-          <code>{selectedLineText || "blank line"}</code>
-        </div>
-        <textarea
-          className="block-editor"
-          spellCheck={false}
-          value={activeBlock.content}
-          onChange={(event) => onBlockContentChange(activeBlock.id, event.target.value)}
-        />
-        <div className="block-actions">
-          <button type="button" onClick={() => onBlockMove(activeBlock.id, -1)} disabled={activeIndex === 0}>
-            Move up
-          </button>
-          <button
-            type="button"
-            onClick={() => onBlockMove(activeBlock.id, 1)}
-            disabled={activeIndex === blocks.length - 1}
-          >
-            Move down
-          </button>
-          <button type="button" onClick={() => onBlockReset(activeBlock.id)}>
-            Reset block
-          </button>
-        </div>
-        <details className="generated-config">
-          <summary>Generated file text</summary>
-          <textarea className="config-editor" readOnly spellCheck={false} value={generatedContent} />
-        </details>
-      </section>
+      </aside>
     </div>
   );
 };
