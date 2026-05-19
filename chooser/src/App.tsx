@@ -204,6 +204,8 @@ export const App = () => {
   const [pythonEnabled, setPythonEnabled] = useState(true);
   const [javaStrategy, setJavaStrategy] = useState<JavaStrategyId>(JAVA_STRATEGY_IDS.MISE_TEMURIN_21);
   const [javaEnabled, setJavaEnabled] = useState(false);
+  const [adminUserEnabled, setAdminUserEnabled] = useState(true);
+  const [adminUserName, setAdminUserName] = useState("");
   const [installTpm, setInstallTpm] = useState(false);
   const [powerlevel10k, setPowerlevel10k] = useState(true);
   const [prepareSystem, setPrepareSystem] = useState(true);
@@ -283,6 +285,8 @@ export const App = () => {
         javaStrategy,
         selectedAgentToolIds: nodeEnabled ? selectedAgentToolIds : [],
         selectedDeveloperToolIds,
+        adminUserEnabled,
+        adminUserName,
         powerlevel10k,
         prepareSystem,
         runInTmux,
@@ -292,6 +296,8 @@ export const App = () => {
       activeOs,
       activeTarget,
       activeTargetVersion,
+      adminUserEnabled,
+      adminUserName,
       assumeYes,
       dockerEnabled,
       dockerStrategy,
@@ -489,6 +495,12 @@ export const App = () => {
             onChange={switchOs}
             onTargetSelected={() => setTargetSelected(true)}
             onVersionChange={(version) => setTargetVersions((current) => ({ ...current, [activeOs]: version }))}
+          />
+          <UserSettingsPanel
+            adminUserEnabled={adminUserEnabled}
+            adminUserName={adminUserName}
+            onEnabledChange={setAdminUserEnabled}
+            onNameChange={setAdminUserName}
           />
           {copyError && (
             <p className="copy-status" role="status">
@@ -715,6 +727,8 @@ export const App = () => {
           <div className="content-stack">
             <SummaryView
               activeTarget={activeTarget}
+              adminUserEnabled={adminUserEnabled}
+              adminUserName={adminUserName}
               configContents={configContents}
               dockerEnabled={dockerEnabled}
               dockerStrategy={dockerStrategy}
@@ -738,6 +752,8 @@ export const App = () => {
           </div>
           <CommandPanel
             activeTarget={activeTarget}
+            adminUserEnabled={adminUserEnabled}
+            adminUserName={adminUserName}
             assumeYes={assumeYes}
             commandSet={commandSet}
             copied={copied}
@@ -914,6 +930,42 @@ const ThemeToggle = ({ mode, onChange }: { mode: ThemeMode; onChange: (mode: The
       <span className="theme-icon" aria-hidden="true" />
       <span className="visually-hidden">{mode} theme</span>
     </button>
+  );
+};
+
+const UserSettingsPanel = ({
+  adminUserEnabled,
+  adminUserName,
+  onEnabledChange,
+  onNameChange
+}: {
+  adminUserEnabled: boolean;
+  adminUserName: string;
+  onEnabledChange: (value: boolean) => void;
+  onNameChange: (value: string) => void;
+}) => {
+  return (
+    <section className="target-bar user-settings-bar" aria-label="User settings">
+      <div>
+        <p className="section-label">User</p>
+        <strong>Sudo user</strong>
+        <span className="muted compact-note">Leave blank to use the login user that runs the setup command.</span>
+      </div>
+      <ToggleSwitch checked={adminUserEnabled} label={adminUserEnabled ? "On" : "Off"} onChange={onEnabledChange} />
+      <label className="version-field user-name-field">
+        <span>User name</span>
+        <input
+          value={adminUserName}
+          onChange={(event) => onNameChange(event.target.value)}
+          placeholder="current user"
+          disabled={!adminUserEnabled}
+          spellCheck={false}
+        />
+      </label>
+      <p className="muted compact-note user-settings-note">
+        The installer adds this user to sudo. If Docker is installed, it also adds the same user to docker.
+      </p>
+    </section>
   );
 };
 
@@ -1513,6 +1565,8 @@ const KeycapList = ({ keys }: { keys: string[] }) => {
 
 const CommandPanel = ({
   activeTarget,
+  adminUserEnabled,
+  adminUserName,
   assumeYes,
   commandSet,
   copied,
@@ -1538,6 +1592,8 @@ const CommandPanel = ({
   onCopy
 }: {
   activeTarget: OsTarget;
+  adminUserEnabled: boolean;
+  adminUserName: string;
   assumeYes: boolean;
   commandSet: CommandSet;
   copied: string | null;
@@ -1586,6 +1642,9 @@ const CommandPanel = ({
         </label>
       </div>
       <p className="muted compact-note">Target version: {targetVersion || "not set"}</p>
+      <p className="muted compact-note">
+        Admin user: {adminUserEnabled ? adminUserName.trim() || "current user" : "off"}
+      </p>
       <p className="muted compact-note">Docker install: {dockerEnabled ? "on" : "off"}</p>
       <p className="muted compact-note">Node setup: {nodeEnabled ? nodeStrategy : "off"}</p>
       <p className="muted compact-note">Node package manager: {nodeEnabled ? nodePackageManager : "off"}</p>
@@ -1625,6 +1684,8 @@ const CommandPanel = ({
 
 const SummaryView = ({
   activeTarget,
+  adminUserEnabled,
+  adminUserName,
   configContents,
   dockerEnabled,
   dockerStrategy,
@@ -1646,6 +1707,8 @@ const SummaryView = ({
   targetVersion
 }: {
   activeTarget: OsTarget;
+  adminUserEnabled: boolean;
+  adminUserName: string;
   configContents: Record<ConfigKey, string>;
   dockerEnabled: boolean;
   dockerStrategy: DockerStrategyId;
@@ -1685,6 +1748,10 @@ const SummaryView = ({
           <div>
             <dt>Target version</dt>
             <dd>{targetVersion || "not set"}</dd>
+          </div>
+          <div>
+            <dt>Admin user</dt>
+            <dd>{adminUserEnabled ? adminUserName.trim() || "current user" : "off"}</dd>
           </div>
           <div>
             <dt>Install steps</dt>

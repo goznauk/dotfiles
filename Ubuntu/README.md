@@ -45,6 +45,9 @@ Dry run:
 ./setup.sh ubuntu --yes --skip-shell
 ./setup.sh ubuntu --yes --skip-dotfiles
 ./setup.sh ubuntu --yes --target-version 26.04
+./setup.sh ubuntu --yes --admin-user-current
+./setup.sh ubuntu --yes --admin-user ozz
+./setup.sh ubuntu --yes --no-admin-user
 ./setup.sh ubuntu --yes --apt-packages git,zsh,vim,tmux
 ./setup.sh ubuntu --yes --optional-packages bat,eza,btop
 ./setup.sh ubuntu --yes --no-optional-packages
@@ -91,6 +94,16 @@ The installer has four main steps:
 
 Use `--skip-apt`, `--skip-shell`, `--skip-dotfiles`, or `--skip-tools` to skip a
 step.
+
+## User setup
+
+By default, the installer makes sure the login user that runs setup is in the
+`sudo` group. Use `--admin-user NAME` to create or update a named user instead.
+If the user does not exist, the installer creates a normal home directory and
+adds the user to `sudo`. It does not set a password or copy private keys.
+
+If Docker is installed, the same user is also added to the `docker` group. Log
+out and back in before expecting the new group membership to work.
 
 ## Apt packages
 

@@ -38,13 +38,14 @@ Preview the Ubuntu plan without changing the machine:
 ./setup.sh ubuntu --dry-run --target-version 26.04
 ```
 
-See [Ubuntu setup](./Ubuntu/README.md) for package lists, runtime tools, Node
-package manager choices, Git identity, Vim, tmux, Docker, and OS notes.
+See [Ubuntu setup](./Ubuntu/README.md) for user setup, package lists, runtime
+tools, Node package manager choices, Git identity, Vim, tmux, Docker, and OS
+notes.
 
 ## Web chooser
 
-The chooser is a local web app for selecting a target OS, packages, runtime
-tools, config blocks, and the final install command.
+The chooser is a local web app for selecting a target OS, sudo user, packages,
+runtime tools, config blocks, and the final install command.
 
 ```sh
 cd chooser

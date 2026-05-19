@@ -95,6 +95,8 @@ export type BuildCommandInput = {
   javaStrategy: JavaStrategyId;
   selectedAgentToolIds: AgentToolId[];
   selectedDeveloperToolIds: DeveloperToolId[];
+  adminUserEnabled: boolean;
+  adminUserName: string;
   powerlevel10k: boolean;
   prepareSystem: boolean;
   runInTmux: boolean;
@@ -120,6 +122,17 @@ export const buildCommands = (input: BuildCommandInput): CommandSet => {
 
   if (input.targetVersion.trim()) {
     flags.push("--target-version", input.targetVersion.trim());
+  }
+
+  if (input.adminUserEnabled) {
+    const adminUserName = input.adminUserName.trim();
+    if (adminUserName) {
+      flags.push("--admin-user", adminUserName);
+    } else {
+      flags.push("--admin-user-current");
+    }
+  } else {
+    flags.push("--no-admin-user");
   }
 
   for (const step of installSteps) {
@@ -176,6 +189,8 @@ export const buildCommands = (input: BuildCommandInput): CommandSet => {
     packageCommand: buildPackageCommand(
       input.activeOs,
       input.targetVersion,
+      input.adminUserEnabled,
+      input.adminUserName,
       input.selectedPackageNames,
       input.dockerEnabled ? input.dockerStrategy : DOCKER_STRATEGY_IDS.NONE,
       input.nodeStrategy,
@@ -214,6 +229,8 @@ const wrapSetupCommand = (
 export const buildPackageCommand = (
   osId: CommandOsId,
   targetVersion: string,
+  adminUserEnabled: boolean,
+  adminUserName: string,
   packages: string[],
   dockerStrategy: DockerStrategyId,
   nodeStrategy: NodeStrategyId,
@@ -236,6 +253,7 @@ export const buildPackageCommand = (
           ? `sudo dnf install -y ${packages.map(shellQuote).join(" ")}`
           : "# No dnf packages selected";
   const targetLine = targetVersion.trim() ? `# Target OS version: ${targetVersion.trim()}` : "";
+  const adminUserLine = adminUserPreviewLine(adminUserEnabled, adminUserName);
   const dockerLine = dockerPreviewLine(osId, dockerStrategy);
   const nodeLine = nodePreviewLine(nodeStrategy);
   const nodePackageManagerLine = nodePackageManagerPreviewLine(nodeStrategy, nodePackageManager);
@@ -246,6 +264,7 @@ export const buildPackageCommand = (
 
   return [
     targetLine,
+    adminUserLine,
     installLine,
     dockerLine,
     nodeLine,
@@ -257,6 +276,19 @@ export const buildPackageCommand = (
   ]
     .filter(Boolean)
     .join("\n");
+};
+
+const adminUserPreviewLine = (enabled: boolean, userName: string) => {
+  if (!enabled) {
+    return "# Admin user setup disabled";
+  }
+
+  const trimmedUserName = userName.trim();
+  if (trimmedUserName) {
+    return `sudo usermod -aG sudo ${shellQuote(trimmedUserName)}`;
+  }
+
+  return "# Admin user: current login user gets sudo access";
 };
 
 const dockerPreviewLine = (osId: CommandOsId, strategy: DockerStrategyId) => {

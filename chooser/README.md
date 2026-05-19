@@ -51,6 +51,7 @@ Use this before changing package data or command generation.
 - Light and dark theme toggle.
 - One scrolling flow: Target, Packages, Toolchains, Config, Run.
 - Version input for each OS target.
+- Sudo user setting for the setup command.
 - Package search and package group expansion.
 - Docker or Podman strategy choices.
 - Node, Python, and Java strategy choices.

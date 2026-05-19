@@ -32,6 +32,8 @@ DEVELOPER_TOOL_MODE="default"
 DEVELOPER_TOOL_CSV="rust,go,bun,deno,gh"
 AGENT_TOOL_MODE="default"
 AGENT_TOOL_CSV="claude-code,openai-codex"
+ADMIN_USER_MODE="current"
+ADMIN_USER_NAME=""
 TARGET_VERSION=""
 
 usage() {
@@ -51,6 +53,12 @@ Options:
                   Use the default oh-my-zsh prompt instead of Powerlevel10k
   --target-version VALUE
                   Expected Ubuntu VERSION_ID, for example 26.04
+  --admin-user-current
+                  Add the login user that runs setup to the sudo group
+  --admin-user VALUE
+                  Create the user if needed and add it to the sudo group
+  --no-admin-user
+                  Skip sudo user setup
   --apt-packages LIST
                   Install exactly these apt packages, comma separated
   --optional-packages LIST
@@ -127,6 +135,25 @@ while [[ "$#" -gt 0 ]]; do
         exit 1
       fi
       shift 2
+      ;;
+    --admin-user-current)
+      ADMIN_USER_MODE="current"
+      ADMIN_USER_NAME=""
+      shift
+      ;;
+    --admin-user)
+      ADMIN_USER_MODE="selected"
+      ADMIN_USER_NAME="${2:-}"
+      if [[ -z "$ADMIN_USER_NAME" ]]; then
+        printf 'Missing value for --admin-user\n' >&2
+        exit 1
+      fi
+      shift 2
+      ;;
+    --no-admin-user)
+      ADMIN_USER_MODE="none"
+      ADMIN_USER_NAME=""
+      shift
       ;;
     --apt-packages)
       APT_PACKAGE_MODE="selected"
@@ -460,6 +487,70 @@ detect_ubuntu() {
   fi
 }
 
+resolve_admin_user_name() {
+  local current_user
+
+  case "$ADMIN_USER_MODE" in
+    none)
+      return 1
+      ;;
+    selected)
+      printf '%s\n' "$ADMIN_USER_NAME"
+      ;;
+    current)
+      current_user="${SUDO_USER:-${USER:-}}"
+      if [[ -z "$current_user" ]]; then
+        current_user="$(id -un)"
+      fi
+      printf '%s\n' "$current_user"
+      ;;
+  esac
+}
+
+validate_admin_user_name() {
+  local user_name="$1"
+
+  [[ "$user_name" =~ ^[a-z_][a-z0-9_-]*[$]?$ ]]
+}
+
+add_admin_user_to_group() {
+  local group_name="$1"
+  local admin_user
+
+  admin_user="$(resolve_admin_user_name)" || return 0
+  if getent group "$group_name" >/dev/null 2>&1; then
+    sudo usermod -aG "$group_name" "$admin_user" || warn "Could not add $admin_user to $group_name."
+  fi
+}
+
+ensure_admin_user() {
+  local admin_user
+  local shell_path
+
+  if [[ "$ADMIN_USER_MODE" == "none" ]]; then
+    log 'Skipping admin user setup'
+    return 0
+  fi
+
+  admin_user="$(resolve_admin_user_name)"
+  if ! validate_admin_user_name "$admin_user"; then
+    printf 'Invalid admin user name: %s\n' "$admin_user" >&2
+    return 1
+  fi
+
+  shell_path="$(command -v zsh || printf '/bin/bash')"
+  if id "$admin_user" >/dev/null 2>&1; then
+    log "Ensuring $admin_user has sudo access"
+  else
+    log "Creating admin user $admin_user"
+    sudo useradd -m -s "$shell_path" "$admin_user"
+    warn "Set a password or SSH key for $admin_user before using that account for login."
+  fi
+
+  sudo usermod -aG sudo "$admin_user"
+  add_admin_user_to_group docker
+}
+
 install_apt_packages() {
   local packages=()
 
@@ -479,7 +570,7 @@ install_apt_packages() {
   install_container_runtime
 
   if command -v docker >/dev/null 2>&1; then
-    sudo usermod -aG docker "$USER" || warn 'Could not add current user to docker group.'
+    add_admin_user_to_group docker
   fi
 
   mkdir -p "$HOME/.local/bin"
@@ -990,6 +1081,17 @@ print_plan() {
 
   log 'Dry run'
   printf 'Target version: %s\n' "${TARGET_VERSION:-not set}"
+  case "$ADMIN_USER_MODE" in
+    current)
+      printf 'Admin user: current login user\n'
+      ;;
+    selected)
+      printf 'Admin user: %s\n' "$ADMIN_USER_NAME"
+      ;;
+    none)
+      printf 'Admin user: disabled\n'
+      ;;
+  esac
   printf 'Apt step: %s\n' "$([[ "$SKIP_APT" -eq 0 ]] && printf enabled || printf skipped)"
   printf 'Shell step: %s\n' "$([[ "$SKIP_SHELL" -eq 0 ]] && printf enabled || printf skipped)"
   printf 'Dotfile step: %s\n' "$([[ "$SKIP_DOTFILES" -eq 0 ]] && printf enabled || printf skipped)"
@@ -1016,6 +1118,8 @@ main() {
   fi
 
   detect_ubuntu
+
+  ensure_admin_user
 
   if [[ "$SKIP_APT" -eq 0 ]] && confirm 'Install apt packages?'; then
     install_apt_packages

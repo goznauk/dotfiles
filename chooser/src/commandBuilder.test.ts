@@ -64,6 +64,8 @@ const baseInput: BuildCommandInput = {
     DEVELOPER_TOOL_IDS.DENO,
     DEVELOPER_TOOL_IDS.GITHUB_CLI
   ],
+  adminUserEnabled: true,
+  adminUserName: "",
   powerlevel10k: true,
   prepareSystem: true,
   runInTmux: true,
@@ -101,6 +103,7 @@ assertNotIncludes(plainCommands.primary, "sudo apt update", "prepare system can 
 assertNotIncludes(plainCommands.primary, "tmux new-session", "tmux wrapper can be disabled");
 assertIncludes(plainCommands.local, "./setup.sh 'ubuntu'", "local command uses setup dispatcher");
 assertIncludes(plainCommands.primary, "'--target-version' '26.04'", "primary command includes target version");
+assertIncludes(plainCommands.primary, "'--admin-user-current'", "primary command configures current admin user");
 assertIncludes(plainCommands.primary, "'--apt-packages' 'git,zsh'", "primary command includes selected packages");
 assertIncludes(
   plainCommands.primary,
@@ -118,6 +121,17 @@ assertIncludes(
   "primary command includes selected agent tools"
 );
 assertIncludes(plainCommands.primary, "'--with-tpm'", "primary command includes TPM flag");
+
+const customAdminCommands = buildCommands({
+  ...baseInput,
+  adminUserName: "ozz"
+});
+assertIncludes(customAdminCommands.primary, "'--admin-user' 'ozz'", "custom admin user is passed to setup");
+assertNotIncludes(
+  customAdminCommands.primary,
+  "'--admin-user-current'",
+  "custom admin user replaces current-user flag"
+);
 
 const noPowerlevelCommands = buildCommands({
   ...baseInput,
@@ -140,6 +154,11 @@ const noPackageCommands = buildCommands({
 });
 assertIncludes(noPackageCommands.primary, "'--skip-apt'", "empty selected package list skips apt");
 assertIncludes(noPackageCommands.packageCommand, "# No apt packages selected", "empty package preview is explicit");
+assertIncludes(
+  noPackageCommands.packageCommand,
+  "# Admin user: current login user gets sudo access",
+  "package preview includes admin user note"
+);
 assertIncludes(
   noPackageCommands.packageCommand,
   "mise settings add idiomatic_version_file_enable_tools node",
@@ -183,6 +202,8 @@ assertIncludes(
   buildPackageCommand(
     OS_IDS.MACOS,
     "26.5",
+    true,
+    "",
     ["git", "node"],
     DOCKER_STRATEGY_IDS.NONE,
     NODE_STRATEGY_IDS.NVM,
@@ -199,6 +220,8 @@ assertIncludes(
   buildPackageCommand(
     OS_IDS.RHEL,
     "10.1",
+    true,
+    "builder",
     ["git"],
     DOCKER_STRATEGY_IDS.PODMAN,
     NODE_STRATEGY_IDS.MISE,
