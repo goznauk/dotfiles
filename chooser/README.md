@@ -1,44 +1,21 @@
 # Dotfiles chooser
 
-React app for choosing OS setup options and copying install/config commands.
+This is a small React app for building a machine setup plan.
 
-Current behavior:
+It shows target OS choices, package groups, runtime tools, editable config
+blocks, and the final command to run.
 
-- Ubuntu has a real bootstrap command through `install.sh`.
-- macOS, Amazon Linux 2023, and RHEL generate package/config preview commands.
-- The flow starts with four compact target buttons. After choosing a
-  target, it collapses to the selected OS plus version input. Changing it again
-  opens a warning modal.
-- Light and dark themes use a compact icon toggle in the page header and persist
-  in `localStorage`. `?theme=light` and `?theme=dark` are supported for visual
-  QA.
-- Target, Packages, Toolchains, Config, and Run are one scrolling flow. The slim
-  section bar sticks to the top of the viewport and scrolls to each section
-  instead of switching pages.
-- Each OS has an editable version input seeded from the current known release.
-- Package names come from `../packages/catalog.json`.
-- Package groups expand into a compact vertical tree with descriptions and
-  resolved package names per OS.
-- Docker and runtime setup use on/off toggle controls. Disabled toolchains hide
-  their strategy details. Enabled areas show the chosen strategy and keep the
-  full choice list behind `Modify`.
-- Toolchain choices cover Node, Python, Java, and containers. Optional runtime
-  installs use toggles instead of visible skip cards.
-- Powerlevel10k is configured beside `.zshrc`. TPM is configured beside
-  `.tmux.conf`.
-- Ubuntu commands can default to `apt update` plus bootstrap package install
-  before setup, and can run setup inside a `tmux` session.
-- Config editors expose `.zshrc`, `.vimrc`, `.tmux.conf`, `.gitconfig`, and
-  `htoprc` as an editor-style block view with clickable lines, descriptions,
-  keycaps, reorder controls, reorder warnings, plugin notes, and editable block
-  content.
-- The final install command appears at the end of the flow in Run.
-
-## Develop
+## Run locally
 
 ```sh
 npm install
 npm run dev
+```
+
+Open:
+
+```text
+http://127.0.0.1:5173/
 ```
 
 ## Build
@@ -47,40 +24,82 @@ npm run dev
 npm run build
 ```
 
+The app builds to `chooser/dist`.
+
 ## Check
 
 ```sh
 npm run check
 ```
 
-The check command validates the package catalog, runs focused command-builder
-tests, checks lint and format rules, rejects non-ASCII typography, then builds
-the production app.
+This runs:
 
-Formatting:
+- package catalog validation
+- ESLint
+- Prettier check
+- ASCII text check
+- command builder tests
+- TypeScript build
+- Vite build
 
-```sh
-npm run format
-npm run lint
-```
+Use this before changing package data or command generation.
 
-Linting requires braces for control-flow blocks, allows compact single-line
-blocks such as `{ return value; }`, and rejects smart quotes or dash-like
-Unicode characters in TypeScript UI text.
+## What the app supports
 
-Useful screenshot URLs:
+- Ubuntu install commands through `install.sh`.
+- macOS, Amazon Linux 2023, and RHEL preview commands.
+- Light and dark theme toggle.
+- One scrolling flow: Target, Packages, Toolchains, Config, Run.
+- Version input for each OS target.
+- Package search and package group expansion.
+- Docker or Podman strategy choices.
+- Node, Python, and Java strategy choices.
+- Coding agent CLI choices after Node setup.
+- `.zshrc`, `.vimrc`, `.tmux.conf`, `.gitconfig`, and `htoprc` block editing.
+- Powerlevel10k setting next to `.zshrc`.
+- TPM setting next to `.tmux.conf`.
+- Final install command and local command.
+
+## Data files
+
+Main data:
+
+- `../packages/catalog.json`: OS targets, package groups, package names,
+  runtime strategies, and coding agent tools.
+- `../common/`: default config file content loaded by the editor.
+
+The Ubuntu installer still uses `../Ubuntu/packages/core.txt` and
+`../Ubuntu/packages/optional.txt` for its default apt package list.
+
+## Useful test URLs
 
 ```text
-/?view=install
 /?view=target
 /?view=packages
 /?view=toolchains
-/?view=install&group=base
-/?view=configs&config=tmux
+/?view=configs&config=zshrc
+/?view=configs&config=gitconfig
 /?view=summary
-/?view=install&docker=off
+/?view=summary&os=macos&theme=dark
+/?view=packages&os=ubuntu&group=base
+/?view=toolchains&os=ubuntu&theme=dark
+/?view=summary&os=ubuntu&docker=off
 ```
 
-The Ubuntu installer still reads `../Ubuntu/packages/*.txt` for its default
-package set. The chooser uses `../packages/catalog.json` so package names can
-vary by OS.
+`?theme=light` and `?theme=dark` are supported for visual checks.
+
+## Code notes
+
+- `src/App.tsx` owns page state and UI composition.
+- `src/catalog.ts` types the JSON catalog.
+- `src/configDefinitions.ts` defines editable config blocks.
+- `src/commandBuilder.ts` builds shell commands.
+- `src/commandBuilder.test.ts` covers command behavior without a test
+  framework.
+
+Formatting rules are simple:
+
+- Always use braces for control flow.
+- A compact one-line block is fine, like `{ return value; }`.
+- Keep source text ASCII.
+- Use normal `"`, `'`, and `-` characters only.

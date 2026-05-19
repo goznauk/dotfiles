@@ -1,22 +1,30 @@
 # Dotfiles
 
-Personal shell, Git, Vim, tmux, and OS setup files.
+Personal setup files for development machines.
 
-## Ubuntu
+The active path is Ubuntu. macOS is kept for old rebuilds, but it is not the
+main target right now.
 
-For an interactive install:
+## What is here
+
+- `Ubuntu/setup-ubuntu.sh`: Ubuntu installer.
+- `common/`: shared `.zshrc`, `.vimrc`, `.tmux.conf`, `.gitconfig`, and global
+  Git ignore file.
+- `packages/catalog.json`: package names for Ubuntu, macOS, Amazon Linux 2023,
+  and RHEL.
+- `chooser/`: React app that builds setup commands and config files.
+- `MacOS/`: legacy Homebrew setup path.
+- `fonts/`: MesloLGS NF files for Powerlevel10k.
+
+## Quick Ubuntu run
+
+Interactive:
 
 ```sh
 ./setup.sh ubuntu
 ```
 
-For a one-shot install:
-
-```sh
-./setup.sh ubuntu --yes
-```
-
-For the local full recommended run with the same wrapper style as the chooser:
+Recommended local run:
 
 ```sh
 sudo apt update
@@ -24,13 +32,19 @@ sudo apt install -y tmux
 tmux new-session -A -s dotfiles './setup.sh ubuntu --yes'
 ```
 
-See [Ubuntu setup](./Ubuntu/README.md) for package details and system notes.
+Preview the Ubuntu plan without changing the machine:
 
-## Chooser
+```sh
+./setup.sh ubuntu --dry-run --target-version 26.04
+```
 
-The React chooser builds a static GitHub Pages app for selecting Ubuntu setup
-options, OS package names, runtime strategies, config files, and copying an
-install command.
+See [Ubuntu setup](./Ubuntu/README.md) for package lists, flags, Git identity,
+Vim, tmux, Docker, and OS notes.
+
+## Web chooser
+
+The chooser is a local web app for selecting a target OS, packages, runtime
+tools, config blocks, and the final install command.
 
 ```sh
 cd chooser
@@ -38,21 +52,40 @@ npm install
 npm run dev
 ```
 
-See [Pages integration](./docs/pages-integration.md) for the `goznauk.com`
-submodule deployment path.
+Open:
 
-Validation:
-
-```sh
-./scripts/check.sh
+```text
+http://127.0.0.1:5173/
 ```
+
+See [Chooser](./chooser/README.md) for development and check commands.
+
+## Pages
+
+The chooser can be published as a static app or copied into `goznauk.com` during
+that site's build.
+
+See [Pages integration](./docs/pages-integration.md).
 
 ## macOS
 
-The macOS setup path is still legacy and uses `.env`.
+The macOS setup is legacy and uses `.env`.
 
 ```sh
 cp .env.example .env
 vim .env
 ./setup.sh macos
 ```
+
+See [macOS setup](./MacOS/README.md).
+
+## Check
+
+Run this before merging:
+
+```sh
+./scripts/check.sh
+```
+
+The check script validates the package catalog, chooser TypeScript build, lint
+rules, shell syntax, JSON files, text policy, and Git diff whitespace.

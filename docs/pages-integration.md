@@ -1,18 +1,21 @@
 # Pages integration
 
-This repository can publish the chooser directly through its own GitHub Pages
-workflow. It can also be mounted under `goznauk.com` the same way `MyTools` is
-mounted.
+The chooser is a static app after build. It can be published from this
+repository or copied into `goznauk.com`.
 
-## Add as a submodule in goznauk.com
+## Use as a submodule
+
+In `goznauk.com`:
 
 ```sh
 git submodule add -b main https://github.com/goznauk/dotfiles.git vendor/dotfiles
 ```
 
-## Build in goznauk.com workflow
+If the branch name changes, update the submodule branch in `goznauk.com`.
 
-Add a build step after checkout and submodule update:
+## Build step
+
+Add this after checkout and submodule update:
 
 ```yaml
 - uses: actions/setup-node@v6
@@ -28,15 +31,24 @@ Add a build step after checkout and submodule update:
     npm run check
 ```
 
-Copy the built app during site assembly:
+## Copy output
+
+During the `goznauk.com` site build:
 
 ```sh
 mkdir -p public/tools/dotfiles
 cp -R vendor/dotfiles/chooser/dist/. public/tools/dotfiles/
 ```
 
-Then add a link to `/tools/dotfiles/` in the `goznauk.com` site navigation and
-tools list.
+Then add a site link to:
 
-The chooser is self-contained after build. Its catalog and default config
-content are bundled into the static assets.
+```text
+/tools/dotfiles/
+```
+
+## Notes
+
+- The app uses a relative Vite base, so it works under a subpath.
+- Catalog data and default config content are bundled into the static assets.
+- Run `npm run check` instead of only `npm run build`; it catches catalog and
+  command-generation mistakes before the site copies `dist`.

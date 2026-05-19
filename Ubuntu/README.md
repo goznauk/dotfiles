@@ -1,13 +1,13 @@
 # Ubuntu setup
 
-This setup targets a development machine with shell tools, build tools, Python,
-Rust, Node, Vim, tmux, Docker, and common inspection commands.
+This setup is for a development machine.
 
-The script requires Bash 4 or newer. Ubuntu ships a supported Bash version by
-default.
+It installs shell tools, build tools, Python, Rust, Node, Vim, tmux, Docker or
+Podman, Git defaults, and small system inspection tools.
 
-Ubuntu 25.04 reached end of life on 2026-01-15. The script still supports it,
-but use Ubuntu 24.04 LTS or 26.04 LTS when possible.
+Ubuntu ships Bash 4 or newer, which this script needs. Ubuntu 25.04 reached end
+of life on 2026-01-15. The script still runs on it, but use Ubuntu 24.04 LTS or
+26.04 LTS when possible.
 
 ## Run
 
@@ -23,7 +23,7 @@ One-shot:
 ./setup.sh ubuntu --yes
 ```
 
-Local full recommended run:
+Recommended local run:
 
 ```sh
 sudo apt update
@@ -31,89 +31,150 @@ sudo apt install -y tmux
 tmux new-session -A -s dotfiles './setup.sh ubuntu --yes'
 ```
 
-Useful variants:
+Dry run:
+
+```sh
+./setup.sh ubuntu --dry-run --target-version 26.04
+```
+
+## Common flags
 
 ```sh
 ./setup.sh ubuntu --yes --skip-apt
 ./setup.sh ubuntu --yes --skip-tools
-./setup.sh ubuntu --dry-run --target-version 26.04
-./setup.sh ubuntu --yes --with-tpm
-./setup.sh ubuntu --yes --no-powerlevel10k
+./setup.sh ubuntu --yes --skip-shell
+./setup.sh ubuntu --yes --skip-dotfiles
+./setup.sh ubuntu --yes --target-version 26.04
 ./setup.sh ubuntu --yes --apt-packages git,zsh,vim,tmux
 ./setup.sh ubuntu --yes --optional-packages bat,eza,btop
 ./setup.sh ubuntu --yes --no-optional-packages
-./setup.sh ubuntu --yes --target-version 26.04
+```
+
+Tool choices:
+
+```sh
 ./setup.sh ubuntu --yes --docker-strategy official
+./setup.sh ubuntu --yes --docker-strategy distro
+./setup.sh ubuntu --yes --docker-strategy podman
+./setup.sh ubuntu --yes --docker-strategy none
+./setup.sh ubuntu --yes --node-strategy mise
 ./setup.sh ubuntu --yes --node-strategy nvm
+./setup.sh ubuntu --yes --python-strategy system-uv
 ./setup.sh ubuntu --yes --python-strategy mise
 ./setup.sh ubuntu --yes --java-strategy mise-temurin-21
+./setup.sh ubuntu --yes --java-strategy distro-openjdk-21
 ./setup.sh ubuntu --yes --agent-tools claude-code,openai-codex
 ./setup.sh ubuntu --yes --no-agent-tools
 ```
 
-## What it installs
+Config choices:
 
-- Apt packages listed in `Ubuntu/packages/core.txt` and
-  `Ubuntu/packages/optional.txt`.
-- Python through Ubuntu packages, with `python3-venv`, `pipx`, and `uv`.
-- Rust through `rustup`, including `rustfmt` and `clippy`.
-- Node LTS through `mise` by default, or `nvm` with `--node-strategy nvm`.
-  The zsh config activates mise for interactive shells, and the installer
-  enables `.nvmrc` and `.node-version` support for mise-managed Node.
-- Coding agent CLIs through npm after Node is ready. With the default mise Node
-  setup, global installs run through mise so an older system npm is not used.
-  The default list is Claude Code and OpenAI Codex CLI. Use `--no-agent-tools`
-  to skip them.
-- Container runtime through `--docker-strategy`: Docker official repository,
-  Ubuntu packages, Podman compatibility, or none.
-- Target release check through `--target-version`, which warns before
-  continuing if the detected Ubuntu `VERSION_ID` differs.
-- Shell tools: `zsh`, oh-my-zsh, Powerlevel10k, syntax highlighting,
-  autosuggestions, completions, `direnv`, `ripgrep`, `fd`, `fzf`, `jq`, `tmux`,
-  and `vim`.
-- Powerlevel10k is the default zsh prompt. Use `--no-powerlevel10k` to keep
-  oh-my-zsh on its default theme; the installer records that choice in
-  `~/.zshrc.local`.
-- Optional tools if available in apt: `bat`, `eza`, `hyperfine`, `btop`, `yq`,
-  `shfmt`, and `nmap`.
+```sh
+./setup.sh ubuntu --yes --with-tpm
+./setup.sh ubuntu --yes --no-powerlevel10k
+```
 
-## Package lists
+## Install steps
 
-Ubuntu apt packages live outside the installer:
+The installer has four main steps:
 
-- `Ubuntu/packages/core.txt` is required. Missing packages stop the apt install.
-- `Ubuntu/packages/optional.txt` is best effort. Missing packages are skipped
-  with a warning.
+1. Apt packages.
+2. Shell setup.
+3. Dotfile links.
+4. uv, Rust, language runtimes, and coding agent CLIs.
 
-Use one package name per line. Blank lines and lines starting with `#` are
-ignored.
+Use `--skip-apt`, `--skip-shell`, `--skip-dotfiles`, or `--skip-tools` to skip a
+step.
 
-The chooser app uses `packages/catalog.json` to map semantic package choices to
-Ubuntu, macOS, Amazon Linux 2023, and RHEL package names. The Ubuntu installer
-can accept the chooser output through `--apt-packages`.
+## Apt packages
 
-The chooser-generated Ubuntu command can also prepare apt metadata, install
-bootstrap tools, and run the setup inside a `tmux` session. Those wrapper
-options default on in the chooser and are outside the installer flags.
+Default apt package lists live here:
+
+- `Ubuntu/packages/core.txt`: required packages.
+- `Ubuntu/packages/optional.txt`: best effort packages.
+
+Missing required packages stop the apt install. Missing optional packages are
+skipped with a warning.
+
+The chooser uses `packages/catalog.json` to map one package choice to different
+package names on Ubuntu, macOS, Amazon Linux 2023, and RHEL. Ubuntu commands can
+pass the resolved names through `--apt-packages`.
+
+Use one package name per line in the text files. Blank lines and lines starting
+with `#` are ignored.
+
+## Runtime tools
+
+Python:
+
+- Default: system Python packages plus `uv` and `pipx`.
+- Optional: `mise` managed Python with `--python-strategy mise`.
+
+Rust:
+
+- Installed through `rustup`.
+- Adds `rustfmt` and `clippy`.
+
+Node:
+
+- Default: Node LTS through `mise`.
+- Optional: `nvm` with `--node-strategy nvm`.
+- The zsh config activates `mise` when it exists.
+- The installer enables `.nvmrc` and `.node-version` support for `mise`.
+
+Coding agent CLIs:
+
+- Default: Claude Code and OpenAI Codex CLI.
+- They install through npm after Node is ready.
+- With the default `mise` Node setup, npm runs through `mise exec node@lts` so an
+  older system npm is not used.
+- Use `--no-agent-tools` to skip them.
+
+Java:
+
+- Optional and off by default.
+- Use `--java-strategy mise-temurin-21` or
+  `--java-strategy distro-openjdk-21`.
+
+## Docker and Podman
+
+Container runtime choices:
+
+- `official`: Docker official apt repository.
+- `distro`: Ubuntu `docker.io` packages.
+- `podman`: Podman plus Docker-compatible CLI behavior.
+- `none`: no container runtime.
+
+After the installer adds your user to the Docker group, log out and back in.
+
+For Ubuntu 25.04, prefer upgrading the OS. If you keep using it, choose
+`--docker-strategy distro`, `--docker-strategy podman`, or
+`--docker-strategy none`.
 
 ## Dotfiles
 
 The installer links these files into `$HOME`:
 
-- `common/.zshrc` -> `~/.zshrc`
-- `common/.vimrc` -> `~/.vimrc`
-- `common/.tmux.conf` -> `~/.tmux.conf`
-- `common/.gitconfig` -> `~/.gitconfig`
-- `common/.gitexclude` -> `~/.gitexclude`
+- `common/.zshrc` to `~/.zshrc`
+- `common/.vimrc` to `~/.vimrc`
+- `common/.tmux.conf` to `~/.tmux.conf`
+- `common/.gitconfig` to `~/.gitconfig`
+- `common/.gitexclude` to `~/.gitexclude`
 
-Existing files are moved to `*.backup.YYYYMMDDHHMMSS` first.
+Existing files are moved to `*.backup.YYYYMMDDHHMMSS` before links are made.
 
-## Git
+Local files:
 
-Shared Git defaults live in `common/.gitconfig`. Personal identity stays in
+- `~/.zshrc.local.pre`: loaded before prompt setup.
+- `~/.zshrc.local`: loaded at the end of `.zshrc`.
+- `~/.gitconfig.local`: local Git identity.
+
+## Git identity
+
+Shared Git defaults live in `common/.gitconfig`. Personal name and email stay in
 `~/.gitconfig.local`, which the installer creates if it is missing.
 
-Use this for one normal account:
+For one account:
 
 ```ini
 [user]
@@ -121,9 +182,8 @@ Use this for one normal account:
 	email = you@example.com
 ```
 
-If work and personal repositories need different accounts, use `includeIf`.
-The base `.gitconfig` has commented examples for `~/work/` and `~/personal/`.
-Create the included files first, then uncomment the matching block.
+For different work and personal identities, use `includeIf`. The base
+`.gitconfig` has commented examples for `~/work/` and `~/personal/`.
 
 Example `~/.gitconfig.work`:
 
@@ -133,36 +193,42 @@ Example `~/.gitconfig.work`:
 	email = you@company.com
 ```
 
-`rm`, `cp`, and `mv` are not aliased. Use these when you want prompts:
+## Shell
+
+Powerlevel10k is the default zsh prompt. Use `--no-powerlevel10k` to keep the
+default oh-my-zsh prompt. The installer records that choice in `~/.zshrc.local`.
+
+`rm`, `cp`, and `mv` are not aliased. Use these only when you want prompts:
 
 - `rmi` for `rm -i`
 - `rmri` for `rm -ri`
 - `cpi` for `cp -i`
 - `mvi` for `mv -i`
 
+Useful aliases:
+
+- `ta 0`: attach to tmux session `0`
+- `ta0`: attach to tmux session `0`
+- `tls`: list tmux sessions
+- `tn name`: create a named tmux session
+- `ipb`: short IP address output
+- `ports`: listening TCP ports
+
 ## Vim
 
-Vim keeps `vim-plug`. Vim 8 native packages are fine, but `vim-plug` remains a
-simple and common default for plain Vim configs. The setup script installs
-`vim-plug`; `.vimrc` only uses it when it already exists. The plugin list is
-intentionally small:
+Vim keeps `vim-plug`. The plugin list is small:
 
 - `tpope/vim-sensible`
 - `editorconfig/editorconfig-vim`
+
+The setup script installs `vim-plug`. `.vimrc` only uses it when it exists.
 
 ## tmux
 
 Prefix is `C-a`.
 
-Common aliases from zsh:
-
-- `ta 0` attaches to session `0`
-- `ta0` attaches to session `0`
-- `tls` lists sessions
-- `tn name` creates a named session
-
 TPM is not loaded by default. Use `--with-tpm` if you want it installed, then
-uncomment the TPM block in `common/.tmux.conf`.
+enable the TPM block in `common/.tmux.conf`.
 
 ## Ubuntu notes
 
@@ -194,23 +260,8 @@ resolvectl status
 nmcli device status
 ```
 
-Ubuntu desktop and server installs may differ. NetworkManager usually owns
+Ubuntu desktop and server installs can differ. NetworkManager usually owns
 desktop networking. Server installs often use netplan files in `/etc/netplan`.
-
-Docker:
-
-```sh
-docker version
-docker compose version
-groups
-```
-
-The official Docker repository strategy follows Docker's supported Ubuntu
-release list. For Ubuntu 25.04, prefer upgrading the OS; if you continue on it,
-use `--docker-strategy distro`, `--docker-strategy podman`, or
-`--docker-strategy none`.
-
-After the installer adds your user to the Docker group, log out and back in.
 
 Local config locations:
 
@@ -220,3 +271,11 @@ Local config locations:
 - User systemd services: `~/.config/systemd/user`
 - System services: `/etc/systemd/system`
 - System environment: `/etc/environment`
+
+## Check
+
+From the repository root:
+
+```sh
+./scripts/check.sh
+```

@@ -1,9 +1,9 @@
 # macOS setup
 
-This path is legacy. The current work is focused on Ubuntu, but these notes are
-kept as a compact checklist for an old macOS rebuild.
+This path is legacy. Keep it for old rebuilds, but use the Ubuntu path for new
+development machines.
 
-## Manual setup
+## Manual first steps
 
 Install command line tools and Homebrew:
 
@@ -12,15 +12,17 @@ xcode-select --install
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-Recommended first-run settings:
+Useful first-run settings:
 
 - Install macOS in English.
 - Enable tap to click.
 - Enable three finger drag.
 - Add Korean as a secondary language if needed.
 - Use F1, F2, and similar keys as standard function keys.
-- Disable automatic spelling correction, automatic capitalization, double-space
-  period insertion, smart quotes, and smart dashes.
+- Disable automatic spelling correction.
+- Disable automatic capitalization.
+- Disable double-space period insertion.
+- Disable smart quotes and smart dashes.
 - Set Chrome as the default browser.
 - Disable recent applications in the Dock.
 - Disable automatic Space rearranging.
@@ -41,24 +43,29 @@ defaults write com.apple.screencapture location ~/Screenshots && killall SystemU
 
 ## Script path
 
-The legacy script reads package settings from `.env`:
+Create `.env` first:
+
+```sh
+cp .env.example .env
+vim .env
+```
+
+Run:
 
 ```sh
 ./setup.sh macos
 ```
 
-It installs Homebrew if missing, then asks before installing packages from
-`OSX_PACKAGES`.
-
-For a non-interactive run:
+Non-interactive:
 
 ```sh
 ./setup.sh macos --yes
 ```
 
-## App notes
+The script installs Homebrew if missing, then asks before installing packages
+from `OSX_PACKAGES`.
 
-Old app list:
+## Old app list
 
 - iTerm2
 - Karabiner-Elements
@@ -73,7 +80,7 @@ Old app list:
 - Microsoft Office
 - Parallels
 
-Karabiner rule file:
+## Karabiner rule
 
 ```sh
 mkdir -p ~/.config/karabiner/assets/complex_modifications

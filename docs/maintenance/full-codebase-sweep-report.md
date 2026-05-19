@@ -2,6 +2,10 @@
 
 This report tracks a ten-iteration maintenance sweep on branch `new`.
 
+This is a work log, not the main user manual. Some notes describe the state at
+the time of an iteration. For current usage, start with `README.md` and
+`Ubuntu/README.md`.
+
 Generated artifacts, dependency folders, binary font files, and lockfile
 internals are not summarized unless they affect behavior or verification.
 
