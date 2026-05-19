@@ -13,7 +13,7 @@ if (roots.length === 0) {
   process.exit(2);
 }
 
-async function walk(path) {
+const walk = async (path) => {
   const info = await stat(path);
   if (info.isDirectory()) {
     if (ignoredNames.has(path.split("/").pop() ?? "")) {
@@ -29,9 +29,9 @@ async function walk(path) {
   }
 
   await checkFile(path);
-}
+};
 
-async function checkFile(path) {
+const checkFile = async (path) => {
   const content = await readFile(path, "utf8");
   const lines = content.split(/\r?\n/);
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
@@ -44,7 +44,7 @@ async function checkFile(path) {
       errors.push(`${path}:${lineIndex + 1}:${columnIndex + 1}: non-ASCII character U+${code.toString(16).toUpperCase()}`);
     }
   }
-}
+};
 
 for (const root of roots) {
   await walk(root);

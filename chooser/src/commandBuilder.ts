@@ -1,13 +1,21 @@
+import {
+  DOCKER_STRATEGY_IDS,
+  INSTALL_STEP_KEYS,
+  JAVA_STRATEGY_IDS,
+  NODE_STRATEGY_IDS,
+  OS_IDS,
+  PYTHON_STRATEGY_IDS,
+  type CommandOsId,
+  type DockerStrategyId,
+  type InstallStepKey,
+  type JavaStrategyId,
+  type NodeStrategyId,
+  type PythonStrategyId
+} from "./ids.js";
+
 export const REPO_OWNER = "goznauk";
 export const REPO_NAME = "dotfiles";
 export const DEFAULT_REF = "main";
-
-export type CommandOsId = "ubuntu" | "macos" | "amazon" | "rhel";
-export type InstallStepKey = "packages" | "shell" | "dotfiles" | "tools";
-export type DockerStrategyId = "official" | "distro" | "podman" | "none";
-export type NodeStrategyId = "mise" | "nvm" | "none";
-export type PythonStrategyId = "system-uv" | "mise" | "none";
-export type JavaStrategyId = "mise-temurin-21" | "distro-openjdk-21" | "none";
 
 export type CommandTarget = {
   commandTarget: string;
@@ -26,25 +34,25 @@ export const installSteps: Array<{
   skipFlag: string;
 }> = [
   {
-    key: "packages",
+    key: INSTALL_STEP_KEYS.PACKAGES,
     title: "OS packages",
     description: "Install package-manager packages selected from the catalog.",
     skipFlag: "--skip-apt"
   },
   {
-    key: "shell",
+    key: INSTALL_STEP_KEYS.SHELL,
     title: "Shell setup",
     description: "oh-my-zsh, Powerlevel10k, syntax highlighting, autosuggestions.",
     skipFlag: "--skip-shell"
   },
   {
-    key: "dotfiles",
+    key: INSTALL_STEP_KEYS.DOTFILES,
     title: "Dotfile links",
     description: "Link zsh, Vim, tmux, Git config, and Git exclude files.",
     skipFlag: "--skip-dotfiles"
   },
   {
-    key: "tools",
+    key: INSTALL_STEP_KEYS.TOOLS,
     title: "Runtime tools",
     description: "uv, Rust stable, rustfmt, clippy, and selected language runtimes.",
     skipFlag: "--skip-tools"
@@ -80,7 +88,7 @@ export const shellDoubleQuote = (value: string) =>
     .replaceAll("`", "\\`")
     .replaceAll("!", "\\!")}"`;
 
-export function buildCommands(input: BuildCommandInput): CommandSet {
+export const buildCommands = (input: BuildCommandInput): CommandSet => {
   const activeRef = input.repoRef.trim() || DEFAULT_REF;
   const flags: string[] = [];
 
@@ -98,23 +106,23 @@ export function buildCommands(input: BuildCommandInput): CommandSet {
     }
   }
 
-  if (input.stepSelection.shell && !input.powerlevel10k) {
+  if (input.stepSelection[INSTALL_STEP_KEYS.SHELL] && !input.powerlevel10k) {
     flags.push("--no-powerlevel10k");
   }
 
-  if (input.stepSelection.packages) {
+  if (input.stepSelection[INSTALL_STEP_KEYS.PACKAGES]) {
     if (input.selectedPackageNames.length > 0) {
       flags.push("--apt-packages", input.selectedPackageNames.join(","));
     } else {
       flags.push("--skip-apt");
     }
-    flags.push("--docker-strategy", input.dockerEnabled ? input.dockerStrategy : "none");
+    flags.push("--docker-strategy", input.dockerEnabled ? input.dockerStrategy : DOCKER_STRATEGY_IDS.NONE);
   }
 
-  if (input.stepSelection.tools) {
+  if (input.stepSelection[INSTALL_STEP_KEYS.TOOLS]) {
     flags.push("--node-strategy", input.nodeStrategy);
     flags.push("--python-strategy", input.pythonStrategy);
-    flags.push("--java-strategy", input.javaEnabled ? input.javaStrategy : "none");
+    flags.push("--java-strategy", input.javaEnabled ? input.javaStrategy : JAVA_STRATEGY_IDS.NONE);
   }
 
   if (input.installTpm) {
@@ -134,22 +142,22 @@ export function buildCommands(input: BuildCommandInput): CommandSet {
       input.activeOs,
       input.targetVersion,
       input.selectedPackageNames,
-      input.dockerEnabled ? input.dockerStrategy : "none",
+      input.dockerEnabled ? input.dockerStrategy : DOCKER_STRATEGY_IDS.NONE,
       input.nodeStrategy,
       input.pythonStrategy,
-      input.javaEnabled ? input.javaStrategy : "none"
+      input.javaEnabled ? input.javaStrategy : JAVA_STRATEGY_IDS.NONE
     )
   };
-}
+};
 
-function wrapSetupCommand(
+const wrapSetupCommand = (
   osId: CommandOsId,
   command: string,
   prepareSystem: boolean,
   runInTmux: boolean,
   mode: "local" | "remote"
-) {
-  if (osId !== "ubuntu") {
+) => {
+  if (osId !== OS_IDS.UBUNTU) {
     return command;
   }
 
@@ -163,9 +171,9 @@ function wrapSetupCommand(
   const packageInstall = packages.length > 0 ? `sudo apt install -y ${packages.map(shellQuote).join(" ")} && ` : "";
 
   return `sudo apt update && ${packageInstall}${setupCommand}`;
-}
+};
 
-export function buildPackageCommand(
+export const buildPackageCommand = (
   osId: CommandOsId,
   targetVersion: string,
   packages: string[],
@@ -173,13 +181,13 @@ export function buildPackageCommand(
   nodeStrategy: NodeStrategyId,
   pythonStrategy: PythonStrategyId,
   javaStrategy: JavaStrategyId
-) {
+) => {
   const installLine =
-    osId === "ubuntu"
+    osId === OS_IDS.UBUNTU
       ? packages.length > 0
         ? `sudo apt install -y ${packages.map(shellQuote).join(" ")}`
         : "# No apt packages selected"
-      : osId === "macos"
+      : osId === OS_IDS.MACOS
         ? packages.length > 0
           ? `brew install ${packages.map(shellQuote).join(" ")}`
           : "# No brew packages selected"
@@ -193,60 +201,60 @@ export function buildPackageCommand(
   const javaLine = javaPreviewLine(osId, javaStrategy);
 
   return [targetLine, installLine, dockerLine, nodeLine, pythonLine, javaLine].filter(Boolean).join("\n");
-}
+};
 
-function dockerPreviewLine(osId: CommandOsId, strategy: DockerStrategyId) {
-  if (strategy === "none") {
+const dockerPreviewLine = (osId: CommandOsId, strategy: DockerStrategyId) => {
+  if (strategy === DOCKER_STRATEGY_IDS.NONE) {
     return "# Container runtime skipped";
   }
-  if (osId === "macos") {
-    return strategy === "official" || strategy === "distro"
+  if (osId === OS_IDS.MACOS) {
+    return strategy === DOCKER_STRATEGY_IDS.OFFICIAL || strategy === DOCKER_STRATEGY_IDS.DISTRO
       ? "brew install --cask docker"
       : "# Podman on macOS usually needs podman machine setup";
   }
-  if (strategy === "podman") {
+  if (strategy === DOCKER_STRATEGY_IDS.PODMAN) {
     return "sudo dnf install -y podman podman-docker";
   }
-  if (strategy === "distro") {
+  if (strategy === DOCKER_STRATEGY_IDS.DISTRO) {
     return "sudo dnf install -y docker";
   }
   return "# Use Docker official repository instructions for this OS";
-}
+};
 
-function nodePreviewLine(strategy: NodeStrategyId) {
-  if (strategy === "none") {
+const nodePreviewLine = (strategy: NodeStrategyId) => {
+  if (strategy === NODE_STRATEGY_IDS.NONE) {
     return "# Node setup skipped";
   }
-  if (strategy === "nvm") {
+  if (strategy === NODE_STRATEGY_IDS.NVM) {
     return "curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash";
   }
   return "curl -fsSL https://mise.run | sh && mise use -g node@lts";
-}
+};
 
-function pythonPreviewLine(strategy: PythonStrategyId) {
-  if (strategy === "none") {
+const pythonPreviewLine = (strategy: PythonStrategyId) => {
+  if (strategy === PYTHON_STRATEGY_IDS.NONE) {
     return "# Extra Python runtime setup skipped";
   }
-  if (strategy === "mise") {
+  if (strategy === PYTHON_STRATEGY_IDS.MISE) {
     return "curl -fsSL https://mise.run | sh && mise use -g python@latest";
   }
   return "curl -LsSf https://astral.sh/uv/install.sh | sh";
-}
+};
 
-function javaPreviewLine(osId: CommandOsId, strategy: JavaStrategyId) {
-  if (strategy === "none") {
+const javaPreviewLine = (osId: CommandOsId, strategy: JavaStrategyId) => {
+  if (strategy === JAVA_STRATEGY_IDS.NONE) {
     return "# Java setup skipped";
   }
-  if (strategy === "mise-temurin-21") {
+  if (strategy === JAVA_STRATEGY_IDS.MISE_TEMURIN_21) {
     return "curl -fsSL https://mise.run | sh && mise use -g java@temurin-21";
   }
-  if (osId === "macos") {
+  if (osId === OS_IDS.MACOS) {
     return "brew install openjdk@21";
   }
-  return osId === "ubuntu" ? "sudo apt install -y openjdk-21-jdk" : "sudo dnf install -y java-21-openjdk-devel";
-}
+  return osId === OS_IDS.UBUNTU ? "sudo apt install -y openjdk-21-jdk" : "sudo dnf install -y java-21-openjdk-devel";
+};
 
-export function buildConfigWriteCommand(definition: { path: string; mkdir?: string }, content: string) {
+export const buildConfigWriteCommand = (definition: { path: string; mkdir?: string }, content: string) => {
   const mkdirLine = definition.mkdir ? `mkdir -p ${definition.mkdir}\n` : "";
   return `${mkdirLine}cat > ${definition.path} <<'EOF'\n${content.replace(/\n?$/, "\n")}EOF`;
-}
+};

@@ -33,6 +33,7 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "brace-style": ["error", "1tbs", { allowSingleLine: true }],
       curly: ["error", "all"],
+      "func-style": ["error", "expression", { allowArrowFunctions: true }],
       "no-restricted-syntax": [
         "error",
         {

@@ -7,6 +7,7 @@ import {
   shellQuote,
   type BuildCommandInput
 } from "./commandBuilder.js";
+import { DOCKER_STRATEGY_IDS, JAVA_STRATEGY_IDS, NODE_STRATEGY_IDS, OS_IDS, PYTHON_STRATEGY_IDS } from "./ids.js";
 
 const assertEqual = (actual: unknown, expected: unknown, label: string) => {
   if (actual !== expected) {
@@ -27,8 +28,8 @@ const assertNotIncludes = (actual: string, expected: string, label: string) => {
 };
 
 const baseInput: BuildCommandInput = {
-  activeOs: "ubuntu",
-  activeTarget: { commandTarget: "ubuntu" },
+  activeOs: OS_IDS.UBUNTU,
+  activeTarget: { commandTarget: OS_IDS.UBUNTU },
   targetVersion: "26.04",
   selectedPackageNames: ["git", "zsh"],
   stepSelection: {
@@ -40,11 +41,11 @@ const baseInput: BuildCommandInput = {
   assumeYes: true,
   installTpm: true,
   dockerEnabled: true,
-  dockerStrategy: "official",
-  nodeStrategy: "mise",
-  pythonStrategy: "system-uv",
+  dockerStrategy: DOCKER_STRATEGY_IDS.OFFICIAL,
+  nodeStrategy: NODE_STRATEGY_IDS.MISE,
+  pythonStrategy: PYTHON_STRATEGY_IDS.SYSTEM_UV,
   javaEnabled: false,
-  javaStrategy: "mise-temurin-21",
+  javaStrategy: JAVA_STRATEGY_IDS.MISE_TEMURIN_21,
   powerlevel10k: true,
   prepareSystem: true,
   runInTmux: true,
@@ -118,12 +119,28 @@ assertIncludes(skippedPackageStep.primary, "'--skip-apt'", "disabled package ste
 assertNotIncludes(skippedPackageStep.primary, "'--docker-strategy'", "disabled package step omits docker strategy");
 
 assertIncludes(
-  buildPackageCommand("macos", "26.5", ["git", "node"], "none", "nvm", "mise", "none"),
+  buildPackageCommand(
+    OS_IDS.MACOS,
+    "26.5",
+    ["git", "node"],
+    DOCKER_STRATEGY_IDS.NONE,
+    NODE_STRATEGY_IDS.NVM,
+    PYTHON_STRATEGY_IDS.MISE,
+    JAVA_STRATEGY_IDS.NONE
+  ),
   "brew install 'git' 'node'",
   "macOS preview uses brew"
 );
 assertIncludes(
-  buildPackageCommand("rhel", "10.1", ["git"], "podman", "mise", "system-uv", "distro-openjdk-21"),
+  buildPackageCommand(
+    OS_IDS.RHEL,
+    "10.1",
+    ["git"],
+    DOCKER_STRATEGY_IDS.PODMAN,
+    NODE_STRATEGY_IDS.MISE,
+    PYTHON_STRATEGY_IDS.SYSTEM_UV,
+    JAVA_STRATEGY_IDS.DISTRO_OPENJDK_21
+  ),
   "sudo dnf install -y podman podman-docker",
   "RHEL podman preview uses dnf"
 );
