@@ -551,13 +551,33 @@ ensure_admin_user() {
   add_admin_user_to_group docker
 }
 
+enable_ubuntu_universe() {
+  if [[ ! -r /etc/os-release ]]; then
+    warn 'Cannot read /etc/os-release; skipping universe repository setup.'
+    return 0
+  fi
+
+  # shellcheck disable=SC1091
+  . /etc/os-release
+  if [[ "${ID:-}" != "ubuntu" ]]; then
+    return 0
+  fi
+
+  log 'Enabling Ubuntu universe repository'
+  sudo apt install -y software-properties-common
+  sudo add-apt-repository -y universe
+  sudo apt update
+}
+
 install_apt_packages() {
   local packages=()
 
-  resolve_apt_packages packages
-
   log 'Updating apt packages'
   sudo apt update
+  enable_ubuntu_universe
+  resolve_apt_packages packages
+
+  log 'Upgrading apt packages'
   sudo apt upgrade -y
 
   if [[ "${#packages[@]}" -gt 0 ]]; then

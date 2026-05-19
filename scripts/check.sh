@@ -22,6 +22,7 @@ bash -n \
   "$ROOT_DIR/MacOS/setup-mac.sh"
 
 node "$ROOT_DIR/scripts/check-bash-nameref.mjs" "$ROOT_DIR/Ubuntu/setup-ubuntu.sh"
+node "$ROOT_DIR/scripts/check-ubuntu-apt-setup.mjs"
 
 if command -v zsh >/dev/null 2>&1; then
   zsh -n "$ROOT_DIR/common/.zshrc"
