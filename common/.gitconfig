@@ -24,3 +24,10 @@
 	enabled = true
 [include]
 	path = ~/.gitconfig.local
+
+# Directory identity examples.
+# Uncomment and edit these if work and personal repos need different accounts.
+# [includeIf "gitdir:~/work/"]
+#	path = ~/.gitconfig.work
+# [includeIf "gitdir:~/personal/"]
+#	path = ~/.gitconfig.personal

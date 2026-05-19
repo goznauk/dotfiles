@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import catalogData from "../../packages/catalog.json";
+import gitConfigRaw from "../../common/.gitconfig?raw";
 import tmuxConfigRaw from "../../common/.tmux.conf?raw";
 import vimConfigRaw from "../../common/.vimrc?raw";
 import zshConfigRaw from "../../common/.zshrc?raw";
@@ -480,6 +481,69 @@ const configDefinitions: Record<ConfigKey, { title: string; path: string; mkdir?
       }
     ])
   },
+  [CONFIG_KEYS.GITCONFIG]: {
+    title: ".gitconfig",
+    path: "$HOME/.gitconfig",
+    blocks: createConfigBlocks(gitConfigRaw, [
+      {
+        id: "safe-defaults",
+        title: "Safe defaults",
+        description: "Keeps push simple, pull fast-forward only, and new repositories on main.",
+        kind: CONFIG_BLOCK_KINDS.FREE,
+        shortcuts: [],
+        start: 1,
+        end: 6
+      },
+      {
+        id: "aliases",
+        title: "Git aliases",
+        description: "Adds short status, graph log, difftool, and conflict listing commands.",
+        kind: CONFIG_BLOCK_KINDS.FREE,
+        shortcuts: ["git st", "git lg", "git lga"],
+        start: 7,
+        end: 13
+      },
+      {
+        id: "core",
+        title: "Editor and excludes",
+        description: "Sets the editor, pager, and shared global exclude file.",
+        kind: CONFIG_BLOCK_KINDS.ORDERED,
+        risk: "Keep excludesfile aligned with the linked ~/.gitexclude path.",
+        shortcuts: [],
+        start: 14,
+        end: 17
+      },
+      {
+        id: "merge-diff",
+        title: "Diff and merge defaults",
+        description: "Uses histogram diff, zdiff3 conflict markers, and rerere reuse.",
+        kind: CONFIG_BLOCK_KINDS.FREE,
+        shortcuts: [],
+        start: 18,
+        end: 24
+      },
+      {
+        id: "local-identity",
+        title: "Local identity include",
+        description: "Loads ~/.gitconfig.local for name, email, and machine-only Git settings.",
+        kind: CONFIG_BLOCK_KINDS.LOCKED,
+        risk: "Keep identity out of this shared file. Put user.name and user.email in ~/.gitconfig.local.",
+        shortcuts: [],
+        start: 25,
+        end: 26
+      },
+      {
+        id: "directory-includes",
+        title: "Directory identity examples",
+        description: "Shows commented includeIf blocks for separate work and personal Git accounts.",
+        kind: CONFIG_BLOCK_KINDS.FREE,
+        risk: "Only uncomment these after creating the target files, or Git can fail inside matching directories.",
+        shortcuts: ["~/work", "~/personal"],
+        start: 28,
+        end: 33
+      }
+    ])
+  },
   [CONFIG_KEYS.HTOP]: {
     title: "htoprc",
     path: "$HOME/.config/htop/htoprc",
@@ -614,6 +678,7 @@ const readInitialConfig = (): ConfigKey => {
   const config = initialParams.get("config");
   return config === CONFIG_KEYS.VIMRC ||
     config === CONFIG_KEYS.TMUX ||
+    config === CONFIG_KEYS.GITCONFIG ||
     config === CONFIG_KEYS.HTOP ||
     config === CONFIG_KEYS.ZSHRC
     ? config
@@ -1813,6 +1878,9 @@ const pluginNoteFor = (configKey: ConfigKey, blockId: string) => {
   }
   if (configKey === CONFIG_KEYS.TMUX && blockId === "tpm") {
     return "TPM stays commented by default. Install TPM, uncomment this block, then press prefix plus I to install plugins.";
+  }
+  if (configKey === CONFIG_KEYS.GITCONFIG && blockId === "directory-includes") {
+    return "Use includeIf when one machine needs different Git accounts by directory. Keep the example commented until the extra files exist.";
   }
   return "";
 };

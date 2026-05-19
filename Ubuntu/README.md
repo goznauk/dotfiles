@@ -102,6 +102,31 @@ The installer links these files into `$HOME`:
 
 Existing files are moved to `*.backup.YYYYMMDDHHMMSS` first.
 
+## Git
+
+Shared Git defaults live in `common/.gitconfig`. Personal identity stays in
+`~/.gitconfig.local`, which the installer creates if it is missing.
+
+Use this for one normal account:
+
+```ini
+[user]
+	name = Your Name
+	email = you@example.com
+```
+
+If work and personal repositories need different accounts, use `includeIf`.
+The base `.gitconfig` has commented examples for `~/work/` and `~/personal/`.
+Create the included files first, then uncomment the matching block.
+
+Example `~/.gitconfig.work`:
+
+```ini
+[user]
+	name = Your Name
+	email = you@company.com
+```
+
 `rm`, `cp`, and `mv` are not aliased. Use these when you want prompts:
 
 - `rmi` for `rm -i`

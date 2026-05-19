@@ -28,9 +28,10 @@ Current behavior:
   `.tmux.conf`.
 - Ubuntu commands can default to `apt update` plus bootstrap package install
   before setup, and can run setup inside a `tmux` session.
-- Config editors expose `.zshrc`, `.vimrc`, `.tmux.conf`, and `htoprc` as an
-  editor-style block view with clickable lines, descriptions, keycaps, reorder
-  controls, reorder warnings, plugin notes, and editable block content.
+- Config editors expose `.zshrc`, `.vimrc`, `.tmux.conf`, `.gitconfig`, and
+  `htoprc` as an editor-style block view with clickable lines, descriptions,
+  keycaps, reorder controls, reorder warnings, plugin notes, and editable block
+  content.
 - The final install command appears at the end of the flow in Run.
 
 ## Develop

@@ -71,6 +71,7 @@ export const CONFIG_KEYS = {
   ZSHRC: "zshrc",
   VIMRC: "vimrc",
   TMUX: "tmux",
+  GITCONFIG: "gitconfig",
   HTOP: "htop"
 } as const;
 
