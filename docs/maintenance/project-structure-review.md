@@ -33,7 +33,7 @@ Maintenance reports are correctly separated under `docs/maintenance/`. A small i
 
 ### Naming And Stale References
 
-The current chooser ownership is clear in `chooser/README.md`: `chooser/src/main.tsx` is the React entry wrapper and `chooser/src/App.tsx` owns page state and UI composition. Some older maintenance notes still mention `chooser/src/main.tsx` as the then-current app surface. Those are acceptable as historical iteration notes, and the new maintenance index now calls out the current ownership explicitly.
+The current chooser ownership is clear across the source tree and maintenance index: `chooser/src/main.tsx` is the React entry wrapper and `chooser/src/App.tsx` owns page state and UI composition. `chooser/README.md` documents the `App.tsx` ownership, while the maintenance index calls out the `main.tsx` entry wrapper. Some older maintenance notes still mention `chooser/src/main.tsx` as the then-current app surface, which is acceptable as historical iteration context.
 
 The `MacOS/` directory uses legacy capitalization, but renaming it would risk breaking existing paths and docs. Leave it as-is and continue to mark it as legacy.
 

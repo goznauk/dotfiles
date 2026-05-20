@@ -6,6 +6,8 @@ The chooser is a static app after build. It can be published from this repositor
 
 This repository has a GitHub Pages workflow at `.github/workflows/pages.yml`. It installs chooser dependencies, runs `npm run build`, and publishes `chooser/dist`.
 
+The workflow also supports manual `workflow_dispatch`. Its automatic push trigger currently targets `main`; this repository's active base branch is `master`, so update the branch trigger separately before relying on automatic Pages deploys from the default branch.
+
 Run `npm --prefix chooser run check` locally before relying on the Pages workflow; the workflow is intentionally limited to the static build.
 
 ## Use In `goznauk.com`
