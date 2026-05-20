@@ -6,6 +6,8 @@ This is a work log, not the main user manual. Some notes describe the state at t
 
 Generated artifacts, dependency folders, binary font files, and lockfile internals are not summarized unless they affect behavior or verification.
 
+Historical baseline notes below preserve what was true during the sweep. Current chooser ownership is `chooser/src/main.tsx` as the entry wrapper and `chooser/src/App.tsx` as the main app surface.
+
 ## Baseline File Notes
 
 ### Repository entry points
@@ -62,7 +64,7 @@ Repository entry points, Ubuntu installer and package lists, common dotfiles, le
 
 ### Main findings
 
-- The codebase is small enough for direct maintenance, but two files carry most complexity: `Ubuntu/setup-ubuntu.sh` and `chooser/src/main.tsx`.
+- At the start of the sweep, the codebase was small enough for direct maintenance, but two files carried most complexity: `Ubuntu/setup-ubuntu.sh` and `chooser/src/main.tsx`. Current chooser complexity now lives primarily in `chooser/src/App.tsx`.
 - There is no single repo validation command.
 - Package catalog data and Ubuntu package files can drift silently.
 - The chooser has strict TypeScript checks, but command helpers and catalog data have no focused tests.

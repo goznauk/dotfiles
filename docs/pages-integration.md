@@ -2,7 +2,13 @@
 
 The chooser is a static app after build. It can be published from this repository or copied into `goznauk.com`.
 
-## Use as a submodule
+## This Repository
+
+This repository has a GitHub Pages workflow at `.github/workflows/pages.yml`. It installs chooser dependencies, runs `npm run build`, and publishes `chooser/dist`.
+
+Run `npm --prefix chooser run check` locally before relying on the Pages workflow; the workflow is intentionally limited to the static build.
+
+## Use In `goznauk.com`
 
 In `goznauk.com`:
 
@@ -49,4 +55,4 @@ Then add a site link to:
 
 - The app uses a relative Vite base, so it works under a subpath.
 - Catalog data and default config content are bundled into the static assets.
-- Run `npm run check` instead of only `npm run build`; it catches catalog and command-generation mistakes before the site copies `dist`.
+- For external site integration, run `npm run check` instead of only `npm run build`; it catches catalog and command-generation mistakes before the site copies `dist`.

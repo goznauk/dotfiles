@@ -7,9 +7,12 @@ The active path is Ubuntu. macOS is kept for old rebuilds, but it is not the mai
 ## What is here
 
 - `Ubuntu/setup-ubuntu.sh`: Ubuntu installer.
+- `Ubuntu/packages/`: default apt package lists used by the Ubuntu installer.
 - `common/`: shared `.zshrc`, `.vimrc`, `.tmux.conf`, `.gitconfig`, and global Git ignore file.
-- `packages/catalog.json`: package names for Ubuntu, macOS, Amazon Linux 2023, and RHEL.
+- `packages/catalog.json`: cross-platform package catalog used by the chooser.
 - `chooser/`: React app that builds setup commands and config files.
+- `scripts/`: repository validation and consistency checks.
+- `docs/`: Pages integration notes and maintenance review reports.
 - `MacOS/`: legacy Homebrew setup path.
 - `fonts/`: MesloLGS NF files for Powerlevel10k.
 

@@ -131,9 +131,9 @@ The directory is created with `0700` permissions and the file with `0600`. Saved
 Default apt package lists live here:
 
 - `Ubuntu/packages/core.txt`: required packages.
-- `Ubuntu/packages/optional.txt`: best effort packages.
+- `Ubuntu/packages/optional.txt`: optional package list.
 
-Missing required packages stop the apt install. Missing optional packages are skipped with a warning.
+The installer builds one resolved apt package set from the selected package mode, optional-package choices, extra packages, and feature flags. Missing packages can stop the apt install, so keep optional entries aligned with supported Ubuntu releases.
 
 The installer enables the Ubuntu `universe` repository before apt package install. Some common developer packages, including `chromium-browser` and `eza`, live there on Ubuntu.
 
