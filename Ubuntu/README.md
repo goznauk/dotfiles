@@ -304,12 +304,17 @@ default oh-my-zsh prompt. The installer records that choice in `~/.zshrc.local`.
 
 Useful aliases:
 
-- `ta [name]`: attach, switch, or create a tmux session.
+- `ta`: attach to the only existing tmux session, or create `main` if no
+  sessions exist. If multiple sessions exist, it lists them and asks for a
+  session name.
+- `ta work`: attach, switch, or create tmux session `work`. Typing a new
+  session name creates it automatically.
+- `ta <TAB>`: complete existing tmux session names in zsh.
 - `ta0`: attach, switch, or create tmux session `0`.
 - `tmain`: attach, switch, or create tmux session `main`.
 - `tl` or `tls`: list tmux sessions.
-- `tn name`: create a named tmux session.
-- `tk name`: confirm, then kill a named tmux session.
+- `tn scratch`: create a named tmux session.
+- `tk scratch`: confirm, then kill a named tmux session.
 - `trn old new`: rename a tmux session.
 - `td`: detach the current tmux client.
 - `tksv`: confirm, then kill the tmux server.

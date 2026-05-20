@@ -103,22 +103,78 @@ _tmux_required() {
   }
 }
 
+_dotfiles_tmux_session_names() {
+  _tmux_required >/dev/null 2>&1 || return 0
+  tmux list-sessions -F '#S' 2>/dev/null || true
+}
+
+_dotfiles_tmux_sessions() {
+  local -a sessions
+  sessions=("${(@f)$(_dotfiles_tmux_session_names)}")
+  (( ${#sessions[@]} )) && _describe 'tmux sessions' sessions
+}
+
+if (( $+functions[compdef] )); then
+  compdef _dotfiles_tmux_sessions ta tk
+fi
+
+_tmux_valid_session_name() {
+  local session="$1"
+  if [[ -z "$session" ]]; then
+    printf 'Session name is required.\n' >&2
+    return 1
+  fi
+  if [[ "$session" == -* ]]; then
+    printf 'Session name must not start with -.\n' >&2
+    return 1
+  fi
+}
+
+_tmux_default_session() {
+  local -a sessions
+  sessions=("${(@f)$(_dotfiles_tmux_session_names)}")
+
+  if (( ${#sessions[@]} == 1 )); then
+    printf '%s\n' "$sessions[1]"
+  elif (( ${#sessions[@]} == 0 )); then
+    printf 'main\n'
+  else
+    printf 'Multiple tmux sessions exist. Run ta <session>.\n' >&2
+    printf 'Existing sessions:\n' >&2
+    printf '  %s\n' "${sessions[@]}" >&2
+    return 1
+  fi
+}
+
 tmux_switch_or_new() {
   _tmux_required || return $?
-  local session="${1:-main}"
-  if tmux has-session -t "$session" 2>/dev/null; then
+  if [[ "$#" -gt 1 ]]; then
+    printf 'Usage: ta [session]\n' >&2
+    return 2
+  fi
+
+  local session="${1:-}"
+  if [[ -z "$session" ]]; then
+    session="$(_tmux_default_session)" || return $?
+  fi
+  _tmux_valid_session_name "$session" || return $?
+
+  if tmux has-session -t "=$session" 2>/dev/null; then
     if [[ -n "${TMUX:-}" ]]; then
-      tmux switch-client -t "$session"
+      tmux switch-client -t "=$session"
     else
-      tmux attach-session -t "$session"
+      tmux attach-session -t "=$session"
     fi
+  elif [[ -n "${TMUX:-}" ]]; then
+    tmux new-session -d -s "$session"
+    tmux switch-client -t "=$session"
   else
     tmux new-session -s "$session"
   fi
 }
 
 ta() {
-  tmux_switch_or_new "${1:-main}"
+  tmux_switch_or_new "$@"
 }
 
 tl() {
@@ -128,7 +184,12 @@ tl() {
 
 tn() {
   _tmux_required || return $?
-  local session="${1:-main}"
+  if [[ "$#" -ne 1 ]]; then
+    printf 'Usage: tn <session>\n' >&2
+    return 2
+  fi
+  local session="$1"
+  _tmux_valid_session_name "$session" || return $?
   tmux new-session -s "$session"
 }
 
@@ -139,11 +200,12 @@ tk() {
     printf 'Usage: tk <session>\n' >&2
     return 2
   fi
+  _tmux_valid_session_name "$session" || return $?
   printf 'Kill tmux session %s? [y/N] ' "$session"
   local answer
   read -r answer || return 1
   [[ "$answer" == [Yy] || "$answer" == [Yy][Ee][Ss] ]] || return 1
-  tmux kill-session -t "$session"
+  tmux kill-session -t "=$session"
 }
 
 trn() {
@@ -152,7 +214,11 @@ trn() {
     printf 'Usage: trn <old> <new>\n' >&2
     return 2
   fi
-  tmux rename-session -t "$1" "$2"
+  local old_session="$1"
+  local new_session="$2"
+  _tmux_valid_session_name "$old_session" || return $?
+  _tmux_valid_session_name "$new_session" || return $?
+  tmux rename-session -t "=$old_session" "$new_session"
 }
 
 td() {
