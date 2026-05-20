@@ -1,7 +1,6 @@
 # macOS setup
 
-This path is legacy. Keep it for old rebuilds, but use the Ubuntu path for new
-development machines.
+This path is legacy. Keep it for old rebuilds, but use the Ubuntu path for new development machines.
 
 ## Manual first steps
 
@@ -62,8 +61,7 @@ Non-interactive:
 ./setup.sh macos --yes
 ```
 
-The script installs Homebrew if missing, then asks before installing packages
-from `OSX_PACKAGES`.
+The script installs Homebrew if missing, then asks before installing packages from `OSX_PACKAGES`.
 
 ## Old app list
 

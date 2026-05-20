@@ -2,16 +2,13 @@
 
 Personal setup files for development machines.
 
-The active path is Ubuntu. macOS is kept for old rebuilds, but it is not the
-main target right now.
+The active path is Ubuntu. macOS is kept for old rebuilds, but it is not the main target right now.
 
 ## What is here
 
 - `Ubuntu/setup-ubuntu.sh`: Ubuntu installer.
-- `common/`: shared `.zshrc`, `.vimrc`, `.tmux.conf`, `.gitconfig`, and global
-  Git ignore file.
-- `packages/catalog.json`: package names for Ubuntu, macOS, Amazon Linux 2023,
-  and RHEL.
+- `common/`: shared `.zshrc`, `.vimrc`, `.tmux.conf`, `.gitconfig`, and global Git ignore file.
+- `packages/catalog.json`: package names for Ubuntu, macOS, Amazon Linux 2023, and RHEL.
 - `chooser/`: React app that builds setup commands and config files.
 - `MacOS/`: legacy Homebrew setup path.
 - `fonts/`: MesloLGS NF files for Powerlevel10k.
@@ -53,14 +50,11 @@ su - john
 
 The password is prompted interactively and is not stored.
 
-See [Ubuntu setup](./Ubuntu/README.md) for user setup, package lists, runtime
-tools, Node package manager choices, Git identity, Vim, tmux, Docker, and OS
-notes.
+See [Ubuntu setup](./Ubuntu/README.md) for user setup, package lists, runtime tools, Node package manager choices, Git identity, Vim, tmux, Docker, and OS notes.
 
 ## Web chooser
 
-The chooser is a local web app for selecting a target OS, sudo user, packages,
-runtime tools, config blocks, and the final install command.
+The chooser is a local web app for selecting a target OS, sudo user, packages, runtime tools, config blocks, and the final install command.
 
 ```sh
 cd chooser
@@ -78,8 +72,7 @@ See [Chooser](./chooser/README.md) for development and check commands.
 
 ## Pages
 
-The chooser can be published as a static app or copied into `goznauk.com` during
-that site's build.
+The chooser can be published as a static app or copied into `goznauk.com` during that site's build.
 
 See [Pages integration](./docs/pages-integration.md).
 
@@ -103,5 +96,4 @@ Run this before merging:
 ./scripts/check.sh
 ```
 
-The check script validates the package catalog, chooser TypeScript build, lint
-rules, shell syntax, JSON files, text policy, and Git diff whitespace.
+The check script validates the package catalog, chooser TypeScript build, lint rules, shell syntax, JSON files, text policy, and Git diff whitespace.

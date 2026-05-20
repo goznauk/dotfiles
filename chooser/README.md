@@ -2,8 +2,7 @@
 
 This is a small React app for building a machine setup plan.
 
-It shows target OS choices, package groups, runtime tools, editable config
-blocks, and the final command to run.
+It shows target OS choices, package groups, runtime tools, editable config blocks, and the final command to run.
 
 ## Run locally
 
@@ -71,12 +70,10 @@ Use this before changing package data or command generation.
 
 Main data:
 
-- `../packages/catalog.json`: OS targets, package groups, package names,
-  runtime strategies, and coding agent tools.
+- `../packages/catalog.json`: OS targets, package groups, package names, runtime strategies, and coding agent tools.
 - `../common/`: default config file content loaded by the editor.
 
-The Ubuntu installer still uses `../Ubuntu/packages/core.txt` and
-`../Ubuntu/packages/optional.txt` for its default apt package list.
+The Ubuntu installer still uses `../Ubuntu/packages/core.txt` and `../Ubuntu/packages/optional.txt` for its default apt package list.
 
 ## Useful test URLs
 
@@ -101,8 +98,7 @@ The Ubuntu installer still uses `../Ubuntu/packages/core.txt` and
 - `src/catalog.ts` types the JSON catalog.
 - `src/configDefinitions.ts` defines editable config blocks.
 - `src/commandBuilder.ts` builds shell commands.
-- `src/commandBuilder.test.ts` covers command behavior without a test
-  framework.
+- `src/commandBuilder.test.ts` covers command behavior without a test framework.
 
 Formatting rules are simple:
 

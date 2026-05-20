@@ -64,13 +64,16 @@ node --input-type=module -e '
   "$ROOT_DIR/MacOS/config_files/Karabiner_KorEng.json"
 
 log 'Checking ASCII text policy'
-if LC_ALL=C rg -n -g '!node_modules' -g '!dist' '[^ -~	]' \
+if LC_ALL=C rg --hidden -n -g '!node_modules' -g '!dist' '[^ -~	]' \
   "$ROOT_DIR/chooser" \
   "$ROOT_DIR/packages" \
   "$ROOT_DIR/Ubuntu" \
   "$ROOT_DIR/common" \
   "$ROOT_DIR/scripts" \
   "$ROOT_DIR/docs" \
+  "$ROOT_DIR/fonts/README.md" \
+  "$ROOT_DIR/fonts/LICENSE-APACHE-2.0.txt" \
+  "$ROOT_DIR/.github/workflows/pages.yml" \
   "$ROOT_DIR/MacOS/README.md" \
   "$ROOT_DIR/MacOS/setup-mac.sh" \
   "$ROOT_DIR/MacOS/config_files/Karabiner_KorEng.json" \

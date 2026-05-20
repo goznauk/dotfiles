@@ -2,12 +2,9 @@
 
 This setup is for a development machine.
 
-It installs shell tools, build tools, Python, Rust, Node, Vim, tmux, Docker or
-Podman, Git defaults, and small system inspection tools.
+It installs shell tools, build tools, Python, Rust, Node, Vim, tmux, Docker or Podman, Git defaults, and small system inspection tools.
 
-Ubuntu ships Bash 4 or newer, which this script needs. Ubuntu 25.04 reached end
-of life on 2026-01-15. The script still runs on it, but use Ubuntu 24.04 LTS or
-26.04 LTS when possible.
+Ubuntu ships Bash 4 or newer, which this script needs. Ubuntu 25.04 reached end of life on 2026-01-15. The script still runs on it, but use Ubuntu 24.04 LTS or 26.04 LTS when possible.
 
 ## Run
 
@@ -99,22 +96,15 @@ The installer has four main steps:
 3. Dotfile links.
 4. uv, language runtimes, developer tools, and coding agent CLIs.
 
-Use `--skip-apt`, `--skip-shell`, `--skip-dotfiles`, or `--skip-tools` to skip a
-step.
+Use `--skip-apt`, `--skip-shell`, `--skip-dotfiles`, or `--skip-tools` to skip a step.
 
 ## User setup
 
-By default, the installer makes sure the login user that runs setup is in the
-`sudo` group. Use `--admin-user NAME` to create or update a named user instead.
-If the user does not exist, the installer creates a normal home directory and
-adds the user to `sudo`. It does not set a password or copy private keys.
+By default, the installer makes sure the login user that runs setup is in the `sudo` group. Use `--admin-user NAME` to create or update a named user instead. If the user does not exist, the installer creates a normal home directory and adds the user to `sudo`. It does not set a password or copy private keys.
 
-If Docker is installed, the same user is also added to the `docker` group. That
-group can control the host through Docker, so treat it as a privileged group.
-Log out and back in before expecting the new group membership to work.
+If Docker is installed, the same user is also added to the `docker` group. That group can control the host through Docker, so treat it as a privileged group. Log out and back in before expecting the new group membership to work.
 
-For a fresh VM where the first login is `root`, use `--create-admin-user` as a
-separate first-boot step:
+For a fresh VM where the first login is `root`, use `--create-admin-user` as a separate first-boot step:
 
 ```sh
 sudo ./Ubuntu/setup-ubuntu.sh --create-admin-user --admin-user john --save-setup-preferences
@@ -122,16 +112,9 @@ su - john
 ./setup.sh ubuntu --yes --load-setup-preferences
 ```
 
-This root-only path prompts for the new password with hidden terminal input,
-confirms it, creates the user with `/bin/bash`, grants sudo access through the
-admin group, prints the `su - john` continuation, and exits before apt, shell,
-dotfile, or tool setup. Passwords are never accepted as command-line arguments,
-stored in `~/.config/dotfiles/setup.env`, printed in dry-runs, or written to
-logs.
+This root-only path prompts for the new password with hidden terminal input, confirms it, creates the user with `/bin/bash`, grants sudo access through the admin group, prints the `su - john` continuation, and exits before apt, shell, dotfile, or tool setup. Passwords are never accepted as command-line arguments, stored in `~/.config/dotfiles/setup.env`, printed in dry-runs, or written to logs.
 
-Dry-run mode does not prompt or mutate users. It reports that root is required,
-which username would be used if known, that the password would be prompted
-interactively, and that the setup stops after admin creation.
+Dry-run mode does not prompt or mutate users. It reports that root is required, which username would be used if known, that the password would be prompted interactively, and that the setup stops after admin creation.
 
 ## Saved setup preferences
 
@@ -141,11 +124,7 @@ Use `--save-setup-preferences` to write reusable non-secret values to:
 ~/.config/dotfiles/setup.env
 ```
 
-The directory is created with `0700` permissions and the file with `0600`.
-Saved values are allowlisted: target version, selected admin username, tmux
-prefix, and the Proxmox guest-agent choice. Passwords, password hashes, repo
-refs, and generated command text are not saved. Use `--load-setup-preferences`
-to load the file before applying command-line flags; explicit flags still win.
+The directory is created with `0700` permissions and the file with `0600`. Saved values are allowlisted: target version, selected admin username, tmux prefix, and the Proxmox guest-agent choice. Passwords, password hashes, repo refs, and generated command text are not saved. Use `--load-setup-preferences` to load the file before applying command-line flags; explicit flags still win.
 
 ## Apt packages
 
@@ -154,38 +133,29 @@ Default apt package lists live here:
 - `Ubuntu/packages/core.txt`: required packages.
 - `Ubuntu/packages/optional.txt`: best effort packages.
 
-Missing required packages stop the apt install. Missing optional packages are
-skipped with a warning.
+Missing required packages stop the apt install. Missing optional packages are skipped with a warning.
 
-The installer enables the Ubuntu `universe` repository before apt package
-install. Some common developer packages, including `chromium-browser` and `eza`,
-live there on Ubuntu.
+The installer enables the Ubuntu `universe` repository before apt package install. Some common developer packages, including `chromium-browser` and `eza`, live there on Ubuntu.
 
-The chooser uses `packages/catalog.json` to map one package choice to different
-package names on Ubuntu, macOS, Amazon Linux 2023, and RHEL. Ubuntu commands can
-pass the resolved names through `--apt-packages`.
+The chooser uses `packages/catalog.json` to map one package choice to different package names on Ubuntu, macOS, Amazon Linux 2023, and RHEL. Ubuntu commands can pass the resolved names through `--apt-packages`.
 
-Use one package name per line in the text files. Blank lines and lines starting
-with `#` are ignored.
+Use one package name per line in the text files. Blank lines and lines starting with `#` are ignored.
 
 ## Proxmox VM guest agent
 
-Use `--proxmox-guest-agent` when the target machine is a Proxmox/QEMU virtual
-machine:
+Use `--proxmox-guest-agent` when the target machine is a Proxmox/QEMU virtual machine:
 
 ```sh
 ./Ubuntu/setup-ubuntu.sh --proxmox-guest-agent
 ```
 
-This adds `qemu-guest-agent` to the resolved apt package set and, after apt
-installation, runs:
+This adds `qemu-guest-agent` to the resolved apt package set and, after apt installation, runs:
 
 ```sh
 sudo systemctl enable --now qemu-guest-agent
 ```
 
-The flag is opt-in so non-Proxmox machines keep the normal package and service
-behavior.
+The flag is opt-in so non-Proxmox machines keep the normal package and service behavior.
 
 ## Runtime tools
 
@@ -222,15 +192,13 @@ Coding agent CLIs:
 
 - Default: Claude Code and OpenAI Codex CLI.
 - They install through npm after Node is ready.
-- With the default `mise` Node setup, npm runs through `mise exec node@lts` so an
-  older system npm is not used.
+- With the default `mise` Node setup, npm runs through `mise exec node@lts` so an older system npm is not used.
 - Use `--no-agent-tools` to skip them.
 
 Java:
 
 - Optional and off by default.
-- Use `--java-strategy mise-temurin-21` or
-  `--java-strategy distro-openjdk-21`.
+- Use `--java-strategy mise-temurin-21` or `--java-strategy distro-openjdk-21`.
 
 ## Docker and Podman
 
@@ -243,9 +211,7 @@ Container runtime choices:
 
 After the installer adds your user to the Docker group, log out and back in.
 
-For Ubuntu 25.04, prefer upgrading the OS. If you keep using it, choose
-`--docker-strategy distro`, `--docker-strategy podman`, or
-`--docker-strategy none`.
+For Ubuntu 25.04, prefer upgrading the OS. If you keep using it, choose `--docker-strategy distro`, `--docker-strategy podman`, or `--docker-strategy none`.
 
 ## Dotfiles
 
@@ -268,8 +234,7 @@ Local files:
 
 ## Git identity
 
-Shared Git defaults live in `common/.gitconfig`. Personal name and email stay in
-`~/.gitconfig.local`, which the installer creates if it is missing.
+Shared Git defaults live in `common/.gitconfig`. Personal name and email stay in `~/.gitconfig.local`, which the installer creates if it is missing.
 
 For one account:
 
@@ -279,8 +244,7 @@ For one account:
 	email = you@example.com
 ```
 
-For different work and personal identities, use `includeIf`. The base
-`.gitconfig` has commented examples for `~/work/` and `~/personal/`.
+For different work and personal identities, use `includeIf`. The base `.gitconfig` has commented examples for `~/work/` and `~/personal/`.
 
 Example `~/.gitconfig.work`:
 
@@ -292,8 +256,7 @@ Example `~/.gitconfig.work`:
 
 ## Shell
 
-Powerlevel10k is the default zsh prompt. Use `--no-powerlevel10k` to keep the
-default oh-my-zsh prompt. The installer records that choice in `~/.zshrc.local`.
+Powerlevel10k is the default zsh prompt. Use `--no-powerlevel10k` to keep the default oh-my-zsh prompt. The installer records that choice in `~/.zshrc.local`.
 
 `rm`, `cp`, and `mv` are not aliased. Use these only when you want prompts:
 
@@ -304,11 +267,8 @@ default oh-my-zsh prompt. The installer records that choice in `~/.zshrc.local`.
 
 Useful aliases:
 
-- `ta`: attach to the only existing tmux session, or create `main` if no
-  sessions exist. If multiple sessions exist, it lists them and asks for a
-  session name.
-- `ta work`: attach, switch, or create tmux session `work`. Typing a new
-  session name creates it automatically.
+- `ta`: attach to the only existing tmux session, or create `main` if no sessions exist. If multiple sessions exist, it lists them and asks for a session name.
+- `ta work`: attach, switch, or create tmux session `work`. Typing a new session name creates it automatically.
 - `ta <TAB>`: complete existing tmux session names in zsh.
 - `ta0`: attach, switch, or create tmux session `0`.
 - `tmain`: attach, switch, or create tmux session `main`.
@@ -333,12 +293,9 @@ The setup script installs `vim-plug`. `.vimrc` only uses it when it exists.
 
 ## tmux
 
-Prefix defaults to `C-a`. Use `--tmux-prefix ctrl-a` or `--tmux-prefix ctrl-b`
-to write an explicit managed prefix block to `~/.tmux.conf.local`. The main
-`common/.tmux.conf` remains linked, then sources that local override if present.
+Prefix defaults to `C-a`. Use `--tmux-prefix ctrl-a` or `--tmux-prefix ctrl-b` to write an explicit managed prefix block to `~/.tmux.conf.local`. The main `common/.tmux.conf` remains linked, then sources that local override if present.
 
-TPM is not loaded by default. Use `--with-tpm` if you want it installed, then
-enable the TPM block in `common/.tmux.conf`.
+TPM is not loaded by default. Use `--with-tpm` if you want it installed, then enable the TPM block in `common/.tmux.conf`.
 
 ## Ubuntu notes
 
@@ -370,8 +327,7 @@ resolvectl status
 nmcli device status
 ```
 
-Ubuntu desktop and server installs can differ. NetworkManager usually owns
-desktop networking. Server installs often use netplan files in `/etc/netplan`.
+Ubuntu desktop and server installs can differ. NetworkManager usually owns desktop networking. Server installs often use netplan files in `/etc/netplan`.
 
 Local config locations:
 

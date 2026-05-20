@@ -1,7 +1,6 @@
 # Pages integration
 
-The chooser is a static app after build. It can be published from this
-repository or copied into `goznauk.com`.
+The chooser is a static app after build. It can be published from this repository or copied into `goznauk.com`.
 
 ## Use as a submodule
 
@@ -50,5 +49,4 @@ Then add a site link to:
 
 - The app uses a relative Vite base, so it works under a subpath.
 - Catalog data and default config content are bundled into the static assets.
-- Run `npm run check` instead of only `npm run build`; it catches catalog and
-  command-generation mistakes before the site copies `dist`.
+- Run `npm run check` instead of only `npm run build`; it catches catalog and command-generation mistakes before the site copies `dist`.
