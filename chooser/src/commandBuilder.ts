@@ -1,0 +1,576 @@
+import {
+  AGENT_TOOL_IDS,
+  DEVELOPER_TOOL_IDS,
+  DOCKER_STRATEGY_IDS,
+  INSTALL_STEP_KEYS,
+  JAVA_STRATEGY_IDS,
+  NODE_STRATEGY_IDS,
+  NODE_PACKAGE_MANAGER_IDS,
+  OS_IDS,
+  PYTHON_STRATEGY_IDS,
+  TMUX_PREFIX_IDS,
+  type AgentToolId,
+  type CommandOsId,
+  type DeveloperToolId,
+  type DockerStrategyId,
+  type InstallStepKey,
+  type JavaStrategyId,
+  type NodePackageManagerId,
+  type NodeStrategyId,
+  type PythonStrategyId,
+  type TmuxPrefixId
+} from "./ids.js";
+
+export const REPO_OWNER = "goznauk";
+export const REPO_NAME = "dotfiles";
+export const DEFAULT_REF = "master";
+
+export const AGENT_TOOL_PACKAGES: Record<AgentToolId, string> = {
+  [AGENT_TOOL_IDS.CLAUDE_CODE]: "@anthropic-ai/claude-code",
+  [AGENT_TOOL_IDS.OPENAI_CODEX]: "@openai/codex"
+};
+
+export const MISE_DEVELOPER_TOOLS: Partial<Record<DeveloperToolId, string>> = {
+  [DEVELOPER_TOOL_IDS.GO]: "go@latest",
+  [DEVELOPER_TOOL_IDS.BUN]: "bun@latest",
+  [DEVELOPER_TOOL_IDS.DENO]: "deno@latest",
+  [DEVELOPER_TOOL_IDS.RUBY]: "ruby@latest",
+  [DEVELOPER_TOOL_IDS.DOTNET]: "dotnet@latest"
+};
+
+export type CommandTarget = {
+  commandTarget: string;
+};
+
+export type CommandSet = {
+  primary: string;
+  local: string;
+  packageCommand: string;
+};
+
+export const installSteps: Array<{
+  key: InstallStepKey;
+  title: string;
+  description: string;
+  skipFlag: string;
+}> = [
+  {
+    key: INSTALL_STEP_KEYS.PACKAGES,
+    title: "OS packages",
+    description: "Install package-manager packages selected from the catalog.",
+    skipFlag: "--skip-apt"
+  },
+  {
+    key: INSTALL_STEP_KEYS.SHELL,
+    title: "Shell setup",
+    description: "oh-my-zsh, Powerlevel10k, syntax highlighting, autosuggestions.",
+    skipFlag: "--skip-shell"
+  },
+  {
+    key: INSTALL_STEP_KEYS.DOTFILES,
+    title: "Dotfile links",
+    description: "Link zsh, Vim, tmux, Git config, and Git exclude files.",
+    skipFlag: "--skip-dotfiles"
+  },
+  {
+    key: INSTALL_STEP_KEYS.TOOLS,
+    title: "Runtime tools",
+    description: "uv, language runtimes, developer tools, and selected CLIs.",
+    skipFlag: "--skip-tools"
+  }
+];
+
+export type BuildCommandInput = {
+  activeOs: CommandOsId;
+  activeTarget: CommandTarget;
+  targetVersion: string;
+  selectedPackageNames: string[];
+  proxmoxGuestAgent: boolean;
+  createAdminUser: boolean;
+  tmuxPrefix: TmuxPrefixId;
+  saveSetupPreferences: boolean;
+  loadSetupPreferences: boolean;
+  stepSelection: Record<InstallStepKey, boolean>;
+  assumeYes: boolean;
+  installTpm: boolean;
+  dockerEnabled: boolean;
+  dockerStrategy: DockerStrategyId;
+  nodeStrategy: NodeStrategyId;
+  nodePackageManager: NodePackageManagerId;
+  pythonStrategy: PythonStrategyId;
+  javaEnabled: boolean;
+  javaStrategy: JavaStrategyId;
+  selectedAgentToolIds: AgentToolId[];
+  selectedDeveloperToolIds: DeveloperToolId[];
+  adminUserEnabled: boolean;
+  adminUserName: string;
+  powerlevel10k: boolean;
+  prepareSystem: boolean;
+  runInTmux: boolean;
+  repoRef: string;
+};
+
+export const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
+export const shellDoubleQuote = (value: string) =>
+  `"${value
+    .replaceAll("\\", "\\\\")
+    .replaceAll('"', '\\"')
+    .replaceAll("$", "\\$")
+    .replaceAll("`", "\\`")
+    .replaceAll("!", "\\!")}"`;
+
+export const buildCommands = (input: BuildCommandInput): CommandSet => {
+  const activeRef = input.repoRef.trim() || DEFAULT_REF;
+  const flags: string[] = [];
+  const selectedPackageNames =
+    input.activeOs === OS_IDS.UBUNTU && input.proxmoxGuestAgent
+      ? uniquePackageNames([...input.selectedPackageNames, "qemu-guest-agent"])
+      : input.selectedPackageNames;
+
+  if (input.assumeYes) {
+    flags.push("--yes");
+  }
+
+  if (input.loadSetupPreferences) {
+    flags.push("--load-setup-preferences");
+  }
+
+  if (input.saveSetupPreferences) {
+    flags.push("--save-setup-preferences");
+  }
+
+  if (input.targetVersion.trim()) {
+    flags.push("--target-version", input.targetVersion.trim());
+  }
+
+  if (input.createAdminUser) {
+    flags.push("--create-admin-user");
+    const adminUserName = input.adminUserName.trim();
+    if (adminUserName) {
+      flags.push("--admin-user", adminUserName);
+    }
+  } else if (input.adminUserEnabled) {
+    const adminUserName = input.adminUserName.trim();
+    if (adminUserName) {
+      flags.push("--admin-user", adminUserName);
+    } else {
+      flags.push("--admin-user-current");
+    }
+  } else {
+    flags.push("--no-admin-user");
+  }
+
+  for (const step of installSteps) {
+    if (!input.stepSelection[step.key]) {
+      flags.push(step.skipFlag);
+    }
+  }
+
+  if (input.stepSelection[INSTALL_STEP_KEYS.SHELL] && !input.powerlevel10k) {
+    flags.push("--no-powerlevel10k");
+  }
+
+  if (input.stepSelection[INSTALL_STEP_KEYS.PACKAGES]) {
+    if (selectedPackageNames.length > 0) {
+      flags.push("--apt-packages", selectedPackageNames.join(","));
+    } else {
+      flags.push("--skip-apt");
+    }
+    flags.push("--docker-strategy", input.dockerEnabled ? input.dockerStrategy : DOCKER_STRATEGY_IDS.NONE);
+    if (input.activeOs === OS_IDS.UBUNTU && input.proxmoxGuestAgent) {
+      flags.push("--proxmox-guest-agent");
+    }
+  }
+
+  if (input.stepSelection[INSTALL_STEP_KEYS.TOOLS]) {
+    flags.push("--node-strategy", input.nodeStrategy);
+    if (input.nodeStrategy !== NODE_STRATEGY_IDS.NONE) {
+      flags.push("--node-package-manager", input.nodePackageManager);
+    }
+    flags.push("--python-strategy", input.pythonStrategy);
+    flags.push("--java-strategy", input.javaEnabled ? input.javaStrategy : JAVA_STRATEGY_IDS.NONE);
+    if (input.selectedDeveloperToolIds.length > 0) {
+      flags.push("--developer-tools", input.selectedDeveloperToolIds.join(","));
+    } else {
+      flags.push("--no-developer-tools");
+    }
+    if (input.selectedAgentToolIds.length > 0) {
+      flags.push("--agent-tools", input.selectedAgentToolIds.join(","));
+    } else {
+      flags.push("--no-agent-tools");
+    }
+  }
+
+  if (input.installTpm) {
+    flags.push("--with-tpm");
+  }
+
+  flags.push("--tmux-prefix", input.tmuxPrefix || TMUX_PREFIX_IDS.CTRL_A);
+
+  const setupArgs = [input.activeTarget.commandTarget, ...flags].map(shellQuote).join(" ");
+  const remoteSetupArgs = [input.activeTarget.commandTarget, ...flags].map(shellDoubleQuote).join(" ");
+  const envPrefix = activeRef === DEFAULT_REF ? "" : `DOTFILES_REPO_REF=${shellDoubleQuote(activeRef)} `;
+  const url = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${activeRef}/install.sh`;
+  const useUbuntuTmuxBootstrap = input.activeOs === OS_IDS.UBUNTU && input.runInTmux;
+  const remoteCommand = useUbuntuTmuxBootstrap
+    ? buildRemoteTmuxInstallCommand(url, envPrefix, remoteSetupArgs, input.prepareSystem)
+    : buildRemoteInstallCommand(url, envPrefix, remoteSetupArgs);
+  const localCommand = `./setup.sh ${setupArgs}`;
+
+  return {
+    primary: useUbuntuTmuxBootstrap
+      ? remoteCommand
+      : wrapSetupCommand(input.activeOs, remoteCommand, input.prepareSystem, input.runInTmux, "remote"),
+    local: wrapSetupCommand(input.activeOs, localCommand, input.prepareSystem, input.runInTmux, "local"),
+    packageCommand: buildPackageCommand(
+      input.activeOs,
+      input.targetVersion,
+      input.adminUserEnabled,
+      input.adminUserName,
+      selectedPackageNames,
+      input.proxmoxGuestAgent,
+      input.dockerEnabled ? input.dockerStrategy : DOCKER_STRATEGY_IDS.NONE,
+      input.nodeStrategy,
+      input.nodePackageManager,
+      input.pythonStrategy,
+      input.javaEnabled ? input.javaStrategy : JAVA_STRATEGY_IDS.NONE,
+      input.selectedAgentToolIds,
+      input.selectedDeveloperToolIds
+    )
+  };
+};
+
+const uniquePackageNames = (packages: string[]) => [...new Set(packages)];
+
+const buildRemoteInstallScript = (
+  url: string,
+  envPrefix: string,
+  setupArgs: string,
+  prepareDependencies: boolean,
+  holdPaneOpen: boolean
+) => {
+  const lines = [
+    "#!/usr/bin/env bash",
+    "set -Eeuo pipefail",
+    "",
+    'runner_path="${BASH_SOURCE[0]:-$0}"',
+    'installer=""',
+    "status=0",
+    "cleanup() {",
+    '  if [ -n "${installer:-}" ]; then',
+    '    rm -f "$installer"',
+    "  fi",
+    '  rm -f "$runner_path"',
+    "}",
+    "",
+    "finish() {",
+    '  status="$1"',
+    "  trap - EXIT ERR",
+    "  cleanup",
+    ...(holdPaneOpen
+      ? [
+          "  echo",
+          '  echo "[dotfiles] Bootstrap command exited with status $status"',
+          '  if [ "$status" -eq 0 ]; then',
+          '    echo "[dotfiles] Setup completed successfully."',
+          "  else",
+          '    echo "[dotfiles] Failed. Review the output above."',
+          "  fi",
+          '  echo "[dotfiles] Press Enter to close this tmux pane."',
+          "  read -r _ || true"
+        ]
+      : []),
+    '  exit "$status"',
+    "}",
+    "",
+    "trap 'finish $?' ERR",
+    "trap 'finish $?' EXIT",
+    ""
+  ];
+
+  if (prepareDependencies) {
+    const packages = ["ca-certificates", "curl", "git", "tmux"];
+    lines.push(
+      'echo "[dotfiles] Preparing bootstrap dependencies..."',
+      "sudo -v",
+      "sudo apt update",
+      `sudo apt install -y ${packages.map(shellDoubleQuote).join(" ")}`,
+      ""
+    );
+  }
+
+  lines.push(
+    'echo "[dotfiles] Downloading installer..."',
+    'installer="$(mktemp)"',
+    `curl -fsSL ${shellDoubleQuote(url)} -o "$installer"`,
+    "",
+    'echo "[dotfiles] Running installer..."',
+    "set +e",
+    `${envPrefix}bash "$installer" ${setupArgs}`,
+    'status="$?"',
+    "set -e",
+    'finish "$status"'
+  );
+
+  return lines.join("\n");
+};
+
+const buildRemoteInstallCommand = (url: string, envPrefix: string, setupArgs: string) => {
+  const script = buildRemoteInstallScript(url, envPrefix, setupArgs, false, false);
+  return `bash -lc ${shellQuote(script)}`;
+};
+
+const buildRemoteTmuxInstallCommand = (url: string, envPrefix: string, setupArgs: string, prepareSystem: boolean) => {
+  const runnerScript = buildRemoteInstallScript(url, envPrefix, setupArgs, prepareSystem, true);
+  const lines = [
+    ...(prepareSystem
+      ? [
+          "if ! command -v tmux >/dev/null 2>&1; then",
+          '  echo "[dotfiles] Installing tmux for bootstrap session..."',
+          "  sudo apt update && sudo apt install -y 'tmux' || { echo \"[dotfiles] Could not install tmux.\" >&2; exit 1; }",
+          "fi",
+          ""
+        ]
+      : []),
+    'runner="$(mktemp)" || { echo "[dotfiles] Could not create runner script." >&2; exit 1; }',
+    "if cat > \"$runner\" <<'DOTFILES_RUNNER'",
+    runnerScript,
+    "DOTFILES_RUNNER",
+    "then",
+    "  :",
+    "else",
+    '  echo "[dotfiles] Could not write runner script." >&2',
+    '  rm -f "$runner"',
+    "  exit 1",
+    "fi",
+    'chmod +x "$runner" || { echo "[dotfiles] Could not make runner script executable." >&2; rm -f "$runner"; exit 1; }',
+    'session="dotfiles-$(date +%Y%m%d-%H%M%S)-$$"',
+    'echo "[dotfiles] Starting tmux session: $session"',
+    'tmux new-session -s "$session" "$runner"',
+    'tmux_status="$?"',
+    'if [ "$tmux_status" -ne 0 ]; then',
+    '  echo "[dotfiles] tmux exited with status $tmux_status." >&2',
+    '  echo "[dotfiles] If no tmux pane opened, tmux could not start." >&2',
+    '  rm -f "$runner"',
+    '  exit "$tmux_status"',
+    "fi"
+  ];
+
+  return lines.join("\n");
+};
+
+const wrapSetupCommand = (
+  osId: CommandOsId,
+  command: string,
+  prepareSystem: boolean,
+  runInTmux: boolean,
+  mode: "local" | "remote"
+) => {
+  if (osId !== OS_IDS.UBUNTU) {
+    return command;
+  }
+
+  const setupCommand = runInTmux ? buildSimpleTmuxCommand(command) : command;
+  if (!prepareSystem) {
+    return setupCommand;
+  }
+
+  if (runInTmux) {
+    return `if ! command -v tmux >/dev/null 2>&1; then sudo apt update && sudo apt install -y 'tmux'; fi && ${setupCommand}`;
+  }
+
+  const packages =
+    mode === "remote" ? ["ca-certificates", "curl", "git", ...(runInTmux ? ["tmux"] : [])] : runInTmux ? ["tmux"] : [];
+  const packageInstall = packages.length > 0 ? `sudo apt install -y ${packages.map(shellQuote).join(" ")} && ` : "";
+
+  return `sudo apt update && ${packageInstall}${setupCommand}`;
+};
+
+const buildSimpleTmuxCommand = (command: string) =>
+  [
+    'session="dotfiles-$(date +%Y%m%d-%H%M%S)-$$"',
+    'echo "[dotfiles] Starting tmux session: $session"',
+    `tmux new-session -s "$session" ${shellDoubleQuote(command)}`
+  ].join("\n");
+
+export const buildPackageCommand = (
+  osId: CommandOsId,
+  targetVersion: string,
+  adminUserEnabled: boolean,
+  adminUserName: string,
+  packages: string[],
+  proxmoxGuestAgent: boolean,
+  dockerStrategy: DockerStrategyId,
+  nodeStrategy: NodeStrategyId,
+  nodePackageManager: NodePackageManagerId,
+  pythonStrategy: PythonStrategyId,
+  javaStrategy: JavaStrategyId,
+  selectedAgentToolIds: AgentToolId[] = [],
+  selectedDeveloperToolIds: DeveloperToolId[] = []
+) => {
+  const installLine =
+    osId === OS_IDS.UBUNTU
+      ? packages.length > 0
+        ? `sudo apt install -y ${packages.map(shellQuote).join(" ")}`
+        : "# No apt packages selected"
+      : osId === OS_IDS.MACOS
+        ? packages.length > 0
+          ? `brew install ${packages.map(shellQuote).join(" ")}`
+          : "# No brew packages selected"
+        : packages.length > 0
+          ? `sudo dnf install -y ${packages.map(shellQuote).join(" ")}`
+          : "# No dnf packages selected";
+  const targetLine = targetVersion.trim() ? `# Target OS version: ${targetVersion.trim()}` : "";
+  const adminUserLine = adminUserPreviewLine(adminUserEnabled, adminUserName);
+  const proxmoxGuestAgentLine =
+    osId === OS_IDS.UBUNTU && proxmoxGuestAgent ? "sudo systemctl enable --now qemu-guest-agent" : "";
+  const dockerLine = dockerPreviewLine(osId, dockerStrategy);
+  const nodeLine = nodePreviewLine(nodeStrategy);
+  const nodePackageManagerLine = nodePackageManagerPreviewLine(nodeStrategy, nodePackageManager);
+  const agentToolsLine = agentToolsPreviewLine(nodeStrategy, selectedAgentToolIds);
+  const developerToolsLine = developerToolsPreviewLine(osId, selectedDeveloperToolIds);
+  const pythonLine = pythonPreviewLine(pythonStrategy);
+  const javaLine = javaPreviewLine(osId, javaStrategy);
+
+  return [
+    targetLine,
+    adminUserLine,
+    installLine,
+    proxmoxGuestAgentLine,
+    dockerLine,
+    nodeLine,
+    nodePackageManagerLine,
+    agentToolsLine,
+    developerToolsLine,
+    pythonLine,
+    javaLine
+  ]
+    .filter(Boolean)
+    .join("\n");
+};
+
+const adminUserPreviewLine = (enabled: boolean, userName: string) => {
+  if (!enabled) {
+    return "# Admin user setup disabled";
+  }
+
+  const trimmedUserName = userName.trim();
+  if (trimmedUserName) {
+    return `sudo usermod -aG sudo ${shellQuote(trimmedUserName)}`;
+  }
+
+  return "# Admin user: current login user gets sudo access";
+};
+
+const dockerPreviewLine = (osId: CommandOsId, strategy: DockerStrategyId) => {
+  if (strategy === DOCKER_STRATEGY_IDS.NONE) {
+    return "# Container runtime skipped";
+  }
+  if (osId === OS_IDS.MACOS) {
+    return strategy === DOCKER_STRATEGY_IDS.OFFICIAL || strategy === DOCKER_STRATEGY_IDS.DISTRO
+      ? "brew install --cask docker"
+      : "# Podman on macOS usually needs podman machine setup";
+  }
+  if (strategy === DOCKER_STRATEGY_IDS.PODMAN) {
+    return "sudo dnf install -y podman podman-docker";
+  }
+  if (strategy === DOCKER_STRATEGY_IDS.DISTRO) {
+    return "sudo dnf install -y docker";
+  }
+  return "# Use Docker official repository instructions for this OS";
+};
+
+const nodePreviewLine = (strategy: NodeStrategyId) => {
+  if (strategy === NODE_STRATEGY_IDS.NONE) {
+    return "# Node setup skipped";
+  }
+  if (strategy === NODE_STRATEGY_IDS.NVM) {
+    return "curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash";
+  }
+  return "curl -fsSL https://mise.run | sh && mise use -g node@lts && mise settings add idiomatic_version_file_enable_tools node";
+};
+
+const nodePackageManagerPreviewLine = (nodeStrategy: NodeStrategyId, packageManager: NodePackageManagerId) => {
+  if (nodeStrategy === NODE_STRATEGY_IDS.NONE) {
+    return "";
+  }
+
+  if (packageManager === NODE_PACKAGE_MANAGER_IDS.NPM) {
+    return "# Use npm bundled with Node";
+  }
+
+  const corepackCommand =
+    packageManager === NODE_PACKAGE_MANAGER_IDS.PNPM
+      ? "corepack enable pnpm && corepack prepare pnpm@latest --activate"
+      : "corepack enable yarn && corepack prepare yarn@stable --activate";
+
+  return nodeStrategy === NODE_STRATEGY_IDS.MISE
+    ? `mise exec node@lts -- sh -lc ${shellQuote(corepackCommand)}`
+    : corepackCommand;
+};
+
+const agentToolsPreviewLine = (nodeStrategy: NodeStrategyId, selectedAgentToolIds: AgentToolId[]) => {
+  const packages = selectedAgentToolIds.map((toolId) => AGENT_TOOL_PACKAGES[toolId]).filter(Boolean);
+  if (packages.length === 0) {
+    return "# Agent CLI install skipped";
+  }
+
+  if (nodeStrategy === NODE_STRATEGY_IDS.NONE) {
+    return "# Agent CLI install needs Node";
+  }
+
+  const installArgs = packages.map(shellQuote).join(" ");
+  return nodeStrategy === NODE_STRATEGY_IDS.MISE
+    ? `mise exec node@lts -- npm install -g ${installArgs}`
+    : `npm install -g ${installArgs}`;
+};
+
+const developerToolsPreviewLine = (osId: CommandOsId, selectedDeveloperToolIds: DeveloperToolId[]) => {
+  if (selectedDeveloperToolIds.length === 0) {
+    return "# Developer tool install skipped";
+  }
+
+  const lines = selectedDeveloperToolIds.map((toolId) => {
+    if (toolId === DEVELOPER_TOOL_IDS.RUST) {
+      return "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile default";
+    }
+    if (toolId === DEVELOPER_TOOL_IDS.GITHUB_CLI) {
+      return osId === OS_IDS.MACOS
+        ? "brew install gh"
+        : osId === OS_IDS.UBUNTU
+          ? "# GitHub CLI: add official repository, then sudo apt install -y gh"
+          : "sudo dnf install -y gh";
+    }
+    return `mise use -g ${MISE_DEVELOPER_TOOLS[toolId] ?? `${toolId}@latest`}`;
+  });
+
+  return lines.join("\n");
+};
+
+const pythonPreviewLine = (strategy: PythonStrategyId) => {
+  if (strategy === PYTHON_STRATEGY_IDS.NONE) {
+    return "# Extra Python runtime setup skipped";
+  }
+  if (strategy === PYTHON_STRATEGY_IDS.MISE) {
+    return "curl -fsSL https://mise.run | sh && mise use -g python@latest && mise settings add idiomatic_version_file_enable_tools python";
+  }
+  return "curl -LsSf https://astral.sh/uv/install.sh | sh";
+};
+
+const javaPreviewLine = (osId: CommandOsId, strategy: JavaStrategyId) => {
+  if (strategy === JAVA_STRATEGY_IDS.NONE) {
+    return "# Java setup skipped";
+  }
+  if (strategy === JAVA_STRATEGY_IDS.MISE_TEMURIN_21) {
+    return "curl -fsSL https://mise.run | sh && mise use -g java@temurin-21";
+  }
+  if (osId === OS_IDS.MACOS) {
+    return "brew install openjdk@21";
+  }
+  return osId === OS_IDS.UBUNTU ? "sudo apt install -y openjdk-21-jdk" : "sudo dnf install -y java-21-openjdk-devel";
+};
+
+export const buildConfigWriteCommand = (definition: { path: string; mkdir?: string }, content: string) => {
+  const mkdirLine = definition.mkdir ? `mkdir -p ${definition.mkdir}\n` : "";
+  return `${mkdirLine}cat > ${definition.path} <<'EOF'\n${content.replace(/\n?$/, "\n")}EOF`;
+};

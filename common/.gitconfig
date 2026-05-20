@@ -1,16 +1,33 @@
 [push]
 	default = simple
+[pull]
+	ff = only
+[init]
+	defaultBranch = main
 [alias]
 	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
 	lga = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --all
 	conflicts = diff --name-only --diff-filter=U
 	dt = difftool
 	s = status
+	st = status --short --branch
 [core]
 	editor = vim
-	pager = diff-so-fancy | less --tabs=4 -RFX
+	pager = less --tabs=4 -RFX
 	excludesfile = ~/.gitexclude
 [diff]
 	tool = vimdiff
+	algorithm = histogram
+[merge]
+	conflictStyle = zdiff3
+[rerere]
+	enabled = true
 [include]
 	path = ~/.gitconfig.local
+
+# Directory identity examples.
+# Uncomment and edit these if work and personal repos need different accounts.
+# [includeIf "gitdir:~/work/"]
+#	path = ~/.gitconfig.work
+# [includeIf "gitdir:~/personal/"]
+#	path = ~/.gitconfig.personal

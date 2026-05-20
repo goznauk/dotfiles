@@ -1,3 +1,0 @@
-[user]
-	email = $GIT_PROFILE_EMAIL
-	name = $GIT_PROFILE_USERNAME
