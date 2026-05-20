@@ -234,7 +234,7 @@ const proxmoxGuestAgentCommands = buildCommands({
   ...baseInput,
   prepareSystem: false,
   runInTmux: false,
-  selectedPackageNames: ["git", "qemu-guest-agent"],
+  selectedPackageNames: ["git"],
   proxmoxGuestAgent: true
 });
 assertIncludes(

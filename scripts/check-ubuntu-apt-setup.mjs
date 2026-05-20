@@ -51,6 +51,10 @@ assert(
   setupScript.includes("sudo systemctl enable --now qemu-guest-agent"),
   "Ubuntu installer must enable and start qemu-guest-agent."
 );
+assert(
+  setupScript.includes("systemctl cat qemu-guest-agent.service"),
+  "Ubuntu installer must verify the qemu-guest-agent service unit exists before enabling it."
+);
 const installFunction = installFunctionMatch[0];
 const packageInstallIndex = installFunction.indexOf('sudo apt install -y "${packages[@]}"');
 const proxmoxEnableCallIndex = installFunction.indexOf("enable_qemu_guest_agent");

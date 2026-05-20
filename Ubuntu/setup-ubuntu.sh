@@ -822,7 +822,7 @@ enable_qemu_guest_agent() {
     printf 'systemctl is required to enable qemu-guest-agent.\n' >&2
     return 1
   fi
-  if ! systemctl list-unit-files qemu-guest-agent.service >/dev/null 2>&1; then
+  if ! systemctl cat qemu-guest-agent.service >/dev/null 2>&1; then
     printf 'qemu-guest-agent service unit was not found after package install.\n' >&2
     return 1
   fi
