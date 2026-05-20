@@ -16,6 +16,7 @@ SKIP_DOTFILES=0
 SKIP_SHELL=0
 SKIP_TOOLS=0
 WITH_TPM=0
+PROXMOX_GUEST_AGENT=0
 DRY_RUN=0
 POWERLEVEL10K=1
 APT_PACKAGE_MODE="default"
@@ -48,6 +49,8 @@ Options:
   --skip-shell     Skip zsh and oh-my-zsh setup
   --skip-tools     Skip uv, language runtimes, and extra developer tools
   --with-tpm       Install tmux plugin manager
+  --proxmox-guest-agent
+                  Install and enable qemu-guest-agent for Proxmox/QEMU VMs
   --dry-run        Print resolved choices and exit without changing the system
   --no-powerlevel10k
                   Use the default oh-my-zsh prompt instead of Powerlevel10k
@@ -118,6 +121,10 @@ while [[ "$#" -gt 0 ]]; do
       ;;
     --with-tpm)
       WITH_TPM=1
+      shift
+      ;;
+    --proxmox-guest-agent)
+      PROXMOX_GUEST_AGENT=1
       shift
       ;;
     --dry-run)
@@ -441,6 +448,9 @@ resolve_apt_packages() {
   esac
 
   append_csv_packages "$EXTRA_PACKAGE_CSV" "$output_name"
+  if [[ "$PROXMOX_GUEST_AGENT" -eq 1 ]]; then
+    __resolve_apt_packages_output_ref+=("qemu-guest-agent")
+  fi
   dedupe_packages "$output_name"
 }
 
@@ -569,6 +579,24 @@ enable_ubuntu_universe() {
   sudo apt update
 }
 
+enable_qemu_guest_agent() {
+  if [[ "$PROXMOX_GUEST_AGENT" -eq 0 ]]; then
+    return 0
+  fi
+
+  log 'Enabling qemu guest agent'
+  if ! command -v systemctl >/dev/null 2>&1; then
+    printf 'systemctl is required to enable qemu-guest-agent.\n' >&2
+    return 1
+  fi
+  if ! systemctl list-unit-files qemu-guest-agent.service >/dev/null 2>&1; then
+    printf 'qemu-guest-agent service unit was not found after package install.\n' >&2
+    return 1
+  fi
+
+  sudo systemctl enable --now qemu-guest-agent
+}
+
 install_apt_packages() {
   local packages=()
 
@@ -587,6 +615,7 @@ install_apt_packages() {
     log 'Skipping apt package install'
   fi
 
+  enable_qemu_guest_agent
   install_container_runtime
 
   if command -v docker >/dev/null 2>&1; then
@@ -1123,6 +1152,7 @@ print_plan() {
   printf 'Java strategy: %s\n' "$JAVA_STRATEGY"
   printf 'Developer tools: %s\n' "${DEVELOPER_TOOL_CSV:-none}"
   printf 'Agent tools: %s\n' "${AGENT_TOOL_CSV:-none}"
+  printf 'Proxmox guest agent: %s\n' "$([[ "$PROXMOX_GUEST_AGENT" -eq 1 ]] && printf yes || printf no)"
   printf 'Powerlevel10k: %s\n' "$([[ "$POWERLEVEL10K" -eq 1 ]] && printf yes || printf no)"
   printf 'Install TPM: %s\n' "$([[ "$WITH_TPM" -eq 1 ]] && printf yes || printf no)"
   printf 'Apt packages: %s\n' "${#packages[@]}"

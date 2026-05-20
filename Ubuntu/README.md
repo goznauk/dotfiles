@@ -35,6 +35,7 @@ Dry run:
 
 ```sh
 ./setup.sh ubuntu --dry-run --target-version 26.04
+./setup.sh ubuntu --dry-run --target-version 26.04 --proxmox-guest-agent
 ```
 
 ## Common flags
@@ -51,6 +52,7 @@ Dry run:
 ./setup.sh ubuntu --yes --apt-packages git,zsh,vim,tmux
 ./setup.sh ubuntu --yes --optional-packages bat,eza,btop
 ./setup.sh ubuntu --yes --no-optional-packages
+./setup.sh ubuntu --yes --proxmox-guest-agent
 ```
 
 Tool choices:
@@ -125,6 +127,25 @@ pass the resolved names through `--apt-packages`.
 
 Use one package name per line in the text files. Blank lines and lines starting
 with `#` are ignored.
+
+## Proxmox VM guest agent
+
+Use `--proxmox-guest-agent` when the target machine is a Proxmox/QEMU virtual
+machine:
+
+```sh
+./Ubuntu/setup-ubuntu.sh --proxmox-guest-agent
+```
+
+This adds `qemu-guest-agent` to the resolved apt package set and, after apt
+installation, runs:
+
+```sh
+sudo systemctl enable --now qemu-guest-agent
+```
+
+The flag is opt-in so non-Proxmox machines keep the normal package and service
+behavior.
 
 ## Runtime tools
 

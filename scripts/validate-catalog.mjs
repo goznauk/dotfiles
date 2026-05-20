@@ -57,7 +57,13 @@ const nodePackageManagerIds = catalog.nodePackageManagers.map((item) => item.id)
 const requiredPackageExpectations = [
   {
     id: "utilities.chromium",
-    ubuntuPackage: "chromium-browser"
+    ubuntuPackage: "chromium-browser",
+    defaultSelected: true
+  },
+  {
+    id: "virtualization.proxmox-guest-agent",
+    ubuntuPackage: "qemu-guest-agent",
+    defaultSelected: false
   }
 ];
 
@@ -75,7 +81,10 @@ for (const expectedPackage of requiredPackageExpectations) {
   const item = catalog.packages.find((packageItem) => packageItem.id === expectedPackage.id);
   requireValue(Boolean(item), `Catalog is missing required package ${expectedPackage.id}`);
   if (item) {
-    requireValue(item.defaultSelected === true, `Required package ${expectedPackage.id} must be selected by default`);
+    requireValue(
+      item.defaultSelected === expectedPackage.defaultSelected,
+      `Required package ${expectedPackage.id} defaultSelected must be ${expectedPackage.defaultSelected}`
+    );
     requireValue(
       item.packages.ubuntu.includes(expectedPackage.ubuntuPackage),
       `Required package ${expectedPackage.id} must install ${expectedPackage.ubuntuPackage} on Ubuntu`

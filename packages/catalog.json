@@ -102,6 +102,12 @@
       "defaultEnabled": true
     },
     {
+      "id": "virtualization",
+      "title": "Virtualization",
+      "description": "VM guest integrations and platform support packages.",
+      "defaultEnabled": false
+    },
+    {
       "id": "containers",
       "title": "Containers",
       "description": "Docker or Podman strategy, separated from distro package lists.",
@@ -648,6 +654,19 @@
         "rhel": ["httpie", "aria2", "age", "zstd", "parallel"]
       },
       "note": "Convenient HTTP, download, compression, encryption, and batch execution tools."
+    },
+    {
+      "id": "virtualization.proxmox-guest-agent",
+      "group": "virtualization",
+      "label": "Proxmox VM guest agent",
+      "defaultSelected": false,
+      "packages": {
+        "ubuntu": ["qemu-guest-agent"],
+        "macos": [],
+        "amazon": [],
+        "rhel": []
+      },
+      "note": "Install and enable qemu-guest-agent for Proxmox/QEMU virtual machines."
     }
   ],
   "agentTools": [

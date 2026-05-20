@@ -54,6 +54,7 @@ Use this before changing package data or command generation.
 - Sudo user setting for the setup command.
 - Package search and package group expansion.
 - Chromium browser package option for Ubuntu web testing.
+- Proxmox VM guest-agent package option that emits `--proxmox-guest-agent`.
 - Docker or Podman strategy choices.
 - Node, Python, and Java strategy choices.
 - Node package manager choices. `pnpm` is the default.

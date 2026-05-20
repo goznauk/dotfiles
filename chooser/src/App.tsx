@@ -154,6 +154,7 @@ const copiedLabels: Record<string, string> = {
   "local-command": "already cloned command",
   "primary-command": "bootstrap command"
 };
+const PROXMOX_GUEST_AGENT_PACKAGE_ID = "virtualization.proxmox-guest-agent";
 
 const scrollSectionIntoView = (viewId: ViewId, behavior: ScrollBehavior = "smooth") => {
   const section = document.getElementById(sectionAnchorId(viewId));
@@ -280,6 +281,7 @@ export const App = () => {
     () => unique([...selectedPackageItems.flatMap((item) => packageNamesForOs(item, activeOs)), ...customPackageList]),
     [activeOs, customPackageList, selectedPackageItems]
   );
+  const proxmoxGuestAgent = activeOs === OS_IDS.UBUNTU && selectedPackageIds.includes(PROXMOX_GUEST_AGENT_PACKAGE_ID);
   const commandSet = useMemo(
     () =>
       buildCommands({
@@ -287,6 +289,7 @@ export const App = () => {
         activeTarget,
         targetVersion: activeTargetVersion,
         selectedPackageNames,
+        proxmoxGuestAgent,
         stepSelection,
         assumeYes,
         installTpm,
@@ -323,6 +326,7 @@ export const App = () => {
       nodeStrategy,
       powerlevel10k,
       prepareSystem,
+      proxmoxGuestAgent,
       pythonEnabled,
       pythonStrategy,
       repoRef,
@@ -841,6 +845,7 @@ export const App = () => {
               nodeStrategy={nodeStrategy}
               powerlevel10k={powerlevel10k}
               prepareSystem={prepareSystem}
+              proxmoxGuestAgent={proxmoxGuestAgent}
               pythonEnabled={pythonEnabled}
               pythonStrategy={pythonStrategy}
               runInTmux={runInTmux}
@@ -864,6 +869,7 @@ export const App = () => {
             nodePackageManager={nodePackageManager}
             nodeStrategy={nodeStrategy}
             prepareSystem={prepareSystem}
+            proxmoxGuestAgent={proxmoxGuestAgent}
             pythonEnabled={pythonEnabled}
             pythonStrategy={pythonStrategy}
             repoRef={repoRef}
@@ -1727,6 +1733,7 @@ const CommandPanel = ({
   nodePackageManager,
   nodeStrategy,
   prepareSystem,
+  proxmoxGuestAgent,
   pythonEnabled,
   pythonStrategy,
   repoRef,
@@ -1754,6 +1761,7 @@ const CommandPanel = ({
   nodePackageManager: NodePackageManagerId;
   nodeStrategy: NodeStrategyId;
   prepareSystem: boolean;
+  proxmoxGuestAgent: boolean;
   pythonEnabled: boolean;
   pythonStrategy: PythonStrategyId;
   repoRef: string;
@@ -1784,7 +1792,8 @@ const CommandPanel = ({
       value: selectedDeveloperTools.length > 0 ? selectedDeveloperTools.map((tool) => tool.label).join(", ") : "off"
     },
     { label: "Python", value: pythonEnabled ? pythonStrategy : "off" },
-    { label: "Java", value: javaEnabled ? javaStrategy : "off" }
+    { label: "Java", value: javaEnabled ? javaStrategy : "off" },
+    { label: "Proxmox guest agent", value: proxmoxGuestAgent ? "enable" : "off" }
   ];
 
   return (
@@ -1860,6 +1869,7 @@ const SummaryView = ({
   nodeStrategy,
   powerlevel10k,
   prepareSystem,
+  proxmoxGuestAgent,
   pythonEnabled,
   pythonStrategy,
   runInTmux,
@@ -1883,6 +1893,7 @@ const SummaryView = ({
   nodeStrategy: NodeStrategyId;
   powerlevel10k: boolean;
   prepareSystem: boolean;
+  proxmoxGuestAgent: boolean;
   pythonEnabled: boolean;
   pythonStrategy: PythonStrategyId;
   runInTmux: boolean;
@@ -1966,6 +1977,10 @@ const SummaryView = ({
           <div>
             <dt>TPM</dt>
             <dd>{installTpm ? "install" : "off"}</dd>
+          </div>
+          <div>
+            <dt>Proxmox guest agent</dt>
+            <dd>{proxmoxGuestAgent ? "install and enable" : "off"}</dd>
           </div>
           <div>
             <dt>Run wrapper</dt>

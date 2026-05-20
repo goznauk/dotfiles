@@ -41,6 +41,7 @@ const baseInput: BuildCommandInput = {
   activeTarget: { commandTarget: OS_IDS.UBUNTU },
   targetVersion: "26.04",
   selectedPackageNames: ["git", "zsh"],
+  proxmoxGuestAgent: false,
   stepSelection: {
     packages: true,
     shell: true,
@@ -197,6 +198,29 @@ assertIncludes(
 );
 assertIncludes(noPackageCommands.packageCommand, "GitHub CLI", "package preview includes GitHub CLI note");
 
+const proxmoxGuestAgentCommands = buildCommands({
+  ...baseInput,
+  prepareSystem: false,
+  runInTmux: false,
+  selectedPackageNames: ["git", "qemu-guest-agent"],
+  proxmoxGuestAgent: true
+});
+assertIncludes(
+  proxmoxGuestAgentCommands.primary,
+  "'--proxmox-guest-agent'",
+  "primary command enables Proxmox guest-agent setup"
+);
+assertIncludes(
+  proxmoxGuestAgentCommands.packageCommand,
+  "sudo apt install -y 'git' 'qemu-guest-agent'",
+  "package preview installs qemu guest agent"
+);
+assertIncludes(
+  proxmoxGuestAgentCommands.packageCommand,
+  "sudo systemctl enable --now qemu-guest-agent",
+  "package preview enables qemu guest agent service"
+);
+
 const skippedPackageStep = buildCommands({
   ...baseInput,
   stepSelection: {
@@ -207,6 +231,22 @@ const skippedPackageStep = buildCommands({
 assertIncludes(skippedPackageStep.primary, "'--skip-apt'", "disabled package step skips apt");
 assertNotIncludes(skippedPackageStep.primary, "'--docker-strategy'", "disabled package step omits docker strategy");
 
+const skippedProxmoxPackageStep = buildCommands({
+  ...baseInput,
+  selectedPackageNames: ["qemu-guest-agent"],
+  proxmoxGuestAgent: true,
+  stepSelection: {
+    ...baseInput.stepSelection,
+    packages: false
+  }
+});
+assertIncludes(skippedProxmoxPackageStep.primary, "'--skip-apt'", "disabled package step skips apt");
+assertNotIncludes(
+  skippedProxmoxPackageStep.primary,
+  "'--proxmox-guest-agent'",
+  "disabled package step omits Proxmox service flag"
+);
+
 assertIncludes(
   buildPackageCommand(
     OS_IDS.MACOS,
@@ -214,6 +254,7 @@ assertIncludes(
     true,
     "",
     ["git", "node"],
+    false,
     DOCKER_STRATEGY_IDS.NONE,
     NODE_STRATEGY_IDS.NVM,
     NODE_PACKAGE_MANAGER_IDS.YARN,
@@ -232,6 +273,7 @@ assertIncludes(
     true,
     "builder",
     ["git"],
+    false,
     DOCKER_STRATEGY_IDS.PODMAN,
     NODE_STRATEGY_IDS.MISE,
     NODE_PACKAGE_MANAGER_IDS.NPM,

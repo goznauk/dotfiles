@@ -83,6 +83,7 @@ export type BuildCommandInput = {
   activeTarget: CommandTarget;
   targetVersion: string;
   selectedPackageNames: string[];
+  proxmoxGuestAgent: boolean;
   stepSelection: Record<InstallStepKey, boolean>;
   assumeYes: boolean;
   installTpm: boolean;
@@ -115,6 +116,10 @@ export const shellDoubleQuote = (value: string) =>
 export const buildCommands = (input: BuildCommandInput): CommandSet => {
   const activeRef = input.repoRef.trim() || DEFAULT_REF;
   const flags: string[] = [];
+  const selectedPackageNames =
+    input.activeOs === OS_IDS.UBUNTU && input.proxmoxGuestAgent
+      ? uniquePackageNames([...input.selectedPackageNames, "qemu-guest-agent"])
+      : input.selectedPackageNames;
 
   if (input.assumeYes) {
     flags.push("--yes");
@@ -146,12 +151,15 @@ export const buildCommands = (input: BuildCommandInput): CommandSet => {
   }
 
   if (input.stepSelection[INSTALL_STEP_KEYS.PACKAGES]) {
-    if (input.selectedPackageNames.length > 0) {
-      flags.push("--apt-packages", input.selectedPackageNames.join(","));
+    if (selectedPackageNames.length > 0) {
+      flags.push("--apt-packages", selectedPackageNames.join(","));
     } else {
       flags.push("--skip-apt");
     }
     flags.push("--docker-strategy", input.dockerEnabled ? input.dockerStrategy : DOCKER_STRATEGY_IDS.NONE);
+    if (input.activeOs === OS_IDS.UBUNTU && input.proxmoxGuestAgent) {
+      flags.push("--proxmox-guest-agent");
+    }
   }
 
   if (input.stepSelection[INSTALL_STEP_KEYS.TOOLS]) {
@@ -191,7 +199,8 @@ export const buildCommands = (input: BuildCommandInput): CommandSet => {
       input.targetVersion,
       input.adminUserEnabled,
       input.adminUserName,
-      input.selectedPackageNames,
+      selectedPackageNames,
+      input.proxmoxGuestAgent,
       input.dockerEnabled ? input.dockerStrategy : DOCKER_STRATEGY_IDS.NONE,
       input.nodeStrategy,
       input.nodePackageManager,
@@ -202,6 +211,8 @@ export const buildCommands = (input: BuildCommandInput): CommandSet => {
     )
   };
 };
+
+const uniquePackageNames = (packages: string[]) => [...new Set(packages)];
 
 const wrapSetupCommand = (
   osId: CommandOsId,
@@ -232,6 +243,7 @@ export const buildPackageCommand = (
   adminUserEnabled: boolean,
   adminUserName: string,
   packages: string[],
+  proxmoxGuestAgent: boolean,
   dockerStrategy: DockerStrategyId,
   nodeStrategy: NodeStrategyId,
   nodePackageManager: NodePackageManagerId,
@@ -254,6 +266,8 @@ export const buildPackageCommand = (
           : "# No dnf packages selected";
   const targetLine = targetVersion.trim() ? `# Target OS version: ${targetVersion.trim()}` : "";
   const adminUserLine = adminUserPreviewLine(adminUserEnabled, adminUserName);
+  const proxmoxGuestAgentLine =
+    osId === OS_IDS.UBUNTU && proxmoxGuestAgent ? "sudo systemctl enable --now qemu-guest-agent" : "";
   const dockerLine = dockerPreviewLine(osId, dockerStrategy);
   const nodeLine = nodePreviewLine(nodeStrategy);
   const nodePackageManagerLine = nodePackageManagerPreviewLine(nodeStrategy, nodePackageManager);
@@ -266,6 +280,7 @@ export const buildPackageCommand = (
     targetLine,
     adminUserLine,
     installLine,
+    proxmoxGuestAgentLine,
     dockerLine,
     nodeLine,
     nodePackageManagerLine,
