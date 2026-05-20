@@ -19,6 +19,11 @@ WITH_TPM=0
 PROXMOX_GUEST_AGENT=0
 DRY_RUN=0
 POWERLEVEL10K=1
+CREATE_ADMIN_USER=0
+TMUX_PREFIX=""
+SAVE_SETUP_PREFERENCES=0
+LOAD_SETUP_PREFERENCES=0
+SETUP_PREFERENCES_FILE="${DOTFILES_SETUP_PREFERENCES_FILE:-$HOME/.config/dotfiles/setup.env}"
 APT_PACKAGE_MODE="default"
 APT_PACKAGE_CSV=""
 OPTIONAL_PACKAGE_MODE="all"
@@ -37,6 +42,83 @@ ADMIN_USER_MODE="current"
 ADMIN_USER_NAME=""
 TARGET_VERSION=""
 
+is_valid_admin_user_name() {
+  local user_name="$1"
+
+  [[ "$user_name" =~ ^[a-z][a-z0-9_-]{0,31}$ && "$user_name" != "root" ]]
+}
+
+load_setup_preferences() {
+  local line
+  local key
+  local value
+
+  [[ -r "$SETUP_PREFERENCES_FILE" ]] || return 0
+
+  while IFS='=' read -r key value || [[ -n "${key:-}" ]]; do
+    [[ -z "${key:-}" || "$key" =~ ^[[:space:]]*# ]] && continue
+    case "$key" in
+      DOTFILES_ADMIN_USER_NAME)
+        if is_valid_admin_user_name "$value"; then
+          ADMIN_USER_MODE="selected"
+          ADMIN_USER_NAME="$value"
+        else
+          printf 'WARN: Ignoring invalid saved admin user: %s\n' "$value" >&2
+        fi
+        ;;
+      DOTFILES_TARGET_VERSION)
+        if [[ "$value" =~ ^[0-9][0-9.]*$ ]]; then
+          TARGET_VERSION="$value"
+        else
+          printf 'WARN: Ignoring invalid saved target version: %s\n' "$value" >&2
+        fi
+        ;;
+      DOTFILES_TMUX_PREFIX)
+        case "$value" in
+          ctrl-a|ctrl-b)
+            TMUX_PREFIX="$value"
+            ;;
+          *)
+            printf 'WARN: Ignoring invalid saved tmux prefix: %s\n' "$value" >&2
+            ;;
+        esac
+        ;;
+      DOTFILES_PROXMOX_GUEST_AGENT)
+        case "$value" in
+          0|1)
+            PROXMOX_GUEST_AGENT="$value"
+            ;;
+        esac
+        ;;
+    esac
+  done <"$SETUP_PREFERENCES_FILE"
+}
+
+save_setup_preferences() {
+  local preferences_dir
+  local temp_file
+  local saved_tmux_prefix="${TMUX_PREFIX:-ctrl-a}"
+
+  preferences_dir="$(dirname "$SETUP_PREFERENCES_FILE")"
+  mkdir -p "$preferences_dir"
+  chmod 700 "$preferences_dir"
+
+  temp_file="${SETUP_PREFERENCES_FILE}.tmp.$$"
+  : >"$temp_file"
+  chmod 600 "$temp_file"
+  printf '# Non-secret dotfiles setup preferences.\n' >>"$temp_file"
+  if [[ -n "$TARGET_VERSION" ]]; then
+    printf 'DOTFILES_TARGET_VERSION=%s\n' "$TARGET_VERSION" >>"$temp_file"
+  fi
+  if [[ -n "$ADMIN_USER_NAME" && "$ADMIN_USER_MODE" == "selected" ]]; then
+    printf 'DOTFILES_ADMIN_USER_NAME=%s\n' "$ADMIN_USER_NAME" >>"$temp_file"
+  fi
+  printf 'DOTFILES_TMUX_PREFIX=%s\n' "$saved_tmux_prefix" >>"$temp_file"
+  printf 'DOTFILES_PROXMOX_GUEST_AGENT=%s\n' "$PROXMOX_GUEST_AGENT" >>"$temp_file"
+  mv "$temp_file" "$SETUP_PREFERENCES_FILE"
+  chmod 600 "$SETUP_PREFERENCES_FILE"
+}
+
 usage() {
   cat <<'USAGE'
 Usage:
@@ -51,6 +133,14 @@ Options:
   --with-tpm       Install tmux plugin manager
   --proxmox-guest-agent
                   Install and enable qemu-guest-agent for Proxmox/QEMU VMs
+  --create-admin-user
+                  Create a normal sudo admin user from a root first-boot shell
+  --tmux-prefix VALUE
+                  ctrl-a or ctrl-b
+  --save-setup-preferences
+                  Save non-secret setup preferences to ~/.config/dotfiles/setup.env
+  --load-setup-preferences
+                  Load non-secret setup preferences before applying CLI flags
   --dry-run        Print resolved choices and exit without changing the system
   --no-powerlevel10k
                   Use the default oh-my-zsh prompt instead of Powerlevel10k
@@ -93,9 +183,18 @@ Options:
 Examples:
   ./setup.sh ubuntu
   ./setup.sh ubuntu --yes
+  ./Ubuntu/setup-ubuntu.sh --create-admin-user --admin-user ozz
   ./Ubuntu/setup-ubuntu.sh --yes --with-tpm
 USAGE
 }
+
+for arg in "$@"; do
+  if [[ "$arg" == "--load-setup-preferences" ]]; then
+    LOAD_SETUP_PREFERENCES=1
+    load_setup_preferences
+    break
+  fi
+done
 
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
@@ -125,6 +224,30 @@ while [[ "$#" -gt 0 ]]; do
       ;;
     --proxmox-guest-agent)
       PROXMOX_GUEST_AGENT=1
+      shift
+      ;;
+    --create-admin-user)
+      CREATE_ADMIN_USER=1
+      ADMIN_USER_MODE="selected"
+      shift
+      ;;
+    --tmux-prefix)
+      TMUX_PREFIX="${2:-}"
+      case "$TMUX_PREFIX" in
+        ctrl-a|ctrl-b) ;;
+        *)
+          printf 'Invalid --tmux-prefix: %s\n' "$TMUX_PREFIX" >&2
+          exit 1
+          ;;
+      esac
+      shift 2
+      ;;
+    --save-setup-preferences)
+      SAVE_SETUP_PREFERENCES=1
+      shift
+      ;;
+    --load-setup-preferences)
+      LOAD_SETUP_PREFERENCES=1
       shift
       ;;
     --dry-run)
@@ -520,7 +643,117 @@ resolve_admin_user_name() {
 validate_admin_user_name() {
   local user_name="$1"
 
-  [[ "$user_name" =~ ^[a-z_][a-z0-9_-]*[$]?$ ]]
+  is_valid_admin_user_name "$user_name"
+}
+
+prompt_admin_user_name() {
+  local user_name
+
+  if [[ ! -r /dev/tty ]]; then
+    printf 'A TTY is required to prompt for a new admin username.\n' >&2
+    return 1
+  fi
+
+  printf 'New admin username: ' >/dev/tty
+  IFS= read -r user_name </dev/tty
+  if ! validate_admin_user_name "$user_name"; then
+    printf 'Invalid admin user name: %s\n' "$user_name" >&2
+    return 1
+  fi
+
+  ADMIN_USER_MODE="selected"
+  ADMIN_USER_NAME="$user_name"
+}
+
+prompt_admin_user_password() {
+  local user_name="$1"
+  local password
+  local password_confirm
+  local attempt
+
+  if [[ ! -r /dev/tty ]]; then
+    printf 'A TTY is required to prompt for the new admin password.\n' >&2
+    return 1
+  fi
+
+  for attempt in 1 2 3; do
+    printf 'New password for %s: ' "$user_name" >/dev/tty
+    IFS= read -rs password </dev/tty
+    printf '\n' >/dev/tty
+    printf 'Confirm password for %s: ' "$user_name" >/dev/tty
+    IFS= read -rs password_confirm </dev/tty
+    printf '\n' >/dev/tty
+
+    if [[ -z "$password" ]]; then
+      printf 'Password cannot be empty.\n' >&2
+    elif [[ "$password" == "$password_confirm" ]]; then
+      printf '%s:%s\n' "$user_name" "$password" | chpasswd
+      unset password password_confirm
+      return 0
+    else
+      printf 'Passwords did not match.\n' >&2
+    fi
+
+    unset password password_confirm
+  done
+
+  printf 'Could not confirm password after 3 attempts.\n' >&2
+  return 1
+}
+
+admin_group_name() {
+  if getent group sudo >/dev/null 2>&1; then
+    printf 'sudo\n'
+  elif getent group wheel >/dev/null 2>&1; then
+    printf 'wheel\n'
+  else
+    printf 'sudo\n'
+  fi
+}
+
+create_admin_user_from_root() {
+  local admin_user
+  local group_name
+
+  if [[ "$CREATE_ADMIN_USER" -eq 0 ]]; then
+    return 0
+  fi
+
+  if [[ "$(id -u)" -ne 0 ]]; then
+    printf '%s\n' '--create-admin-user must be run as root.' >&2
+    return 1
+  fi
+
+  if [[ -z "$ADMIN_USER_NAME" ]]; then
+    prompt_admin_user_name
+  fi
+
+  admin_user="$ADMIN_USER_NAME"
+  if ! validate_admin_user_name "$admin_user"; then
+    printf 'Invalid admin user name: %s\n' "$admin_user" >&2
+    return 1
+  fi
+
+  group_name="$(admin_group_name)"
+  if id "$admin_user" >/dev/null 2>&1; then
+    log "Admin user $admin_user already exists"
+  else
+    log "Creating admin user $admin_user"
+    useradd -m -s /bin/bash "$admin_user"
+    prompt_admin_user_password "$admin_user"
+  fi
+
+  log "Granting $group_name access to $admin_user"
+  usermod -aG "$group_name" "$admin_user"
+
+  if [[ "$SAVE_SETUP_PREFERENCES" -eq 1 ]]; then
+    save_setup_preferences
+  fi
+
+  log 'First-boot admin user is ready'
+  printf 'Next: su - %s\n' "$admin_user"
+  printf 'Then rerun dotfiles setup as %s, for example:\n' "$admin_user"
+  printf '  ./setup.sh ubuntu --yes --load-setup-preferences\n'
 }
 
 add_admin_user_to_group() {
@@ -713,6 +946,50 @@ install_shell() {
   fi
 }
 
+write_tmux_prefix_override() {
+  local prefix="$1"
+  local tmux_prefix
+  local old_prefix
+  local local_file="$HOME/.tmux.conf.local"
+  local temp_file
+
+  case "$prefix" in
+    ctrl-a)
+      tmux_prefix="C-a"
+      old_prefix="C-b"
+      ;;
+    ctrl-b)
+      tmux_prefix="C-b"
+      old_prefix="C-a"
+      ;;
+    *)
+      printf 'Invalid tmux prefix: %s\n' "$prefix" >&2
+      return 1
+      ;;
+  esac
+
+  temp_file="${local_file}.tmp.$$"
+  if [[ -f "$local_file" ]]; then
+    awk '
+      /^# BEGIN DOTFILES TMUX PREFIX$/ { skip = 1; next }
+      /^# END DOTFILES TMUX PREFIX$/ { skip = 0; next }
+      skip != 1 { print }
+    ' "$local_file" >"$temp_file"
+  else
+    : >"$temp_file"
+  fi
+
+  printf '\n# BEGIN DOTFILES TMUX PREFIX\n' >>"$temp_file"
+  printf 'set -g prefix %s\n' "$tmux_prefix" >>"$temp_file"
+  printf 'unbind %s\n' "$old_prefix" >>"$temp_file"
+  printf 'bind %s send-prefix\n' "$tmux_prefix" >>"$temp_file"
+  printf '# END DOTFILES TMUX PREFIX\n' >>"$temp_file"
+
+  mv "$temp_file" "$local_file"
+  chmod 600 "$local_file"
+  printf 'Updated %s\n' "$local_file"
+}
+
 install_dotfiles() {
   log 'Installing dotfiles'
   link_file "$CONFIG_DIR/.zshrc" "$HOME/.zshrc"
@@ -728,6 +1005,10 @@ install_dotfiles() {
 	email =
 LOCAL_GITCONFIG
     printf 'Created %s\n' "$HOME/.gitconfig.local"
+  fi
+
+  if [[ -n "$TMUX_PREFIX" ]]; then
+    write_tmux_prefix_override "$TMUX_PREFIX"
   fi
 
   if [[ "$POWERLEVEL10K" -eq 0 ]]; then
@@ -1130,6 +1411,10 @@ print_plan() {
 
   log 'Dry run'
   printf 'Target version: %s\n' "${TARGET_VERSION:-not set}"
+  printf 'Load setup preferences: %s\n' "$([[ "$LOAD_SETUP_PREFERENCES" -eq 1 ]] && printf yes || printf no)"
+  printf 'Save setup preferences: %s\n' "$([[ "$SAVE_SETUP_PREFERENCES" -eq 1 ]] && printf yes || printf no)"
+  printf 'Setup preferences file: %s\n' "$SETUP_PREFERENCES_FILE"
+  printf 'Create admin user first: %s\n' "$([[ "$CREATE_ADMIN_USER" -eq 1 ]] && printf yes || printf no)"
   case "$ADMIN_USER_MODE" in
     current)
       printf 'Admin user: current login user\n'
@@ -1141,6 +1426,11 @@ print_plan() {
       printf 'Admin user: disabled\n'
       ;;
   esac
+  if [[ "$CREATE_ADMIN_USER" -eq 1 ]]; then
+    printf 'First-boot admin setup requires root and stops before apt, shell, dotfiles, and tools.\n'
+    printf 'Password would be prompted interactively with hidden input and never displayed or stored.\n'
+    printf 'Admin group would be granted with sudo/wheel group membership.\n'
+  fi
   printf 'Apt step: %s\n' "$([[ "$SKIP_APT" -eq 0 ]] && printf enabled || printf skipped)"
   printf 'Shell step: %s\n' "$([[ "$SKIP_SHELL" -eq 0 ]] && printf enabled || printf skipped)"
   printf 'Dotfile step: %s\n' "$([[ "$SKIP_DOTFILES" -eq 0 ]] && printf enabled || printf skipped)"
@@ -1155,6 +1445,7 @@ print_plan() {
   printf 'Proxmox guest agent: %s\n' "$([[ "$PROXMOX_GUEST_AGENT" -eq 1 ]] && printf yes || printf no)"
   printf 'Powerlevel10k: %s\n' "$([[ "$POWERLEVEL10K" -eq 1 ]] && printf yes || printf no)"
   printf 'Install TPM: %s\n' "$([[ "$WITH_TPM" -eq 1 ]] && printf yes || printf no)"
+  printf 'Tmux prefix: %s\n' "${TMUX_PREFIX:-repo default}"
   printf 'Apt packages: %s\n' "${#packages[@]}"
   if [[ "${#packages[@]}" -gt 0 ]]; then
     printf '%s\n' "${packages[@]}"
@@ -1168,6 +1459,11 @@ main() {
   fi
 
   detect_ubuntu
+
+  if [[ "$CREATE_ADMIN_USER" -eq 1 ]]; then
+    create_admin_user_from_root
+    exit 0
+  fi
 
   ensure_admin_user
 
@@ -1187,6 +1483,10 @@ main() {
 
   if [[ "$SKIP_TOOLS" -eq 0 ]] && confirm 'Install uv, Rust, and selected language runtimes?'; then
     install_tools
+  fi
+
+  if [[ "$SAVE_SETUP_PREFERENCES" -eq 1 ]]; then
+    save_setup_preferences
   fi
 
   log 'Finished'

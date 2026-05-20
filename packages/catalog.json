@@ -393,7 +393,7 @@
         "amazon": ["tmux"],
         "rhel": ["tmux"]
       },
-      "note": "Terminal multiplexer with the ctrl-a prefix config."
+      "note": "Terminal multiplexer with configurable Ctrl-a or Ctrl-b prefix setup."
     },
     {
       "id": "shell.direnv",

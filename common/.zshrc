@@ -96,10 +96,103 @@ alias la='ls -AF'
 alias ll='ls -alF'
 alias lal='ls -alF'
 
-alias ta='tmux attach -t'
-alias ta0='tmux attach -t 0'
-alias tls='tmux list-sessions'
-alias tn='tmux new -s'
+_tmux_required() {
+  command -v tmux >/dev/null 2>&1 || {
+    printf 'tmux is not installed.\n' >&2
+    return 1
+  }
+}
+
+tmux_switch_or_new() {
+  _tmux_required || return $?
+  local session="${1:-main}"
+  if tmux has-session -t "$session" 2>/dev/null; then
+    if [[ -n "${TMUX:-}" ]]; then
+      tmux switch-client -t "$session"
+    else
+      tmux attach-session -t "$session"
+    fi
+  else
+    tmux new-session -s "$session"
+  fi
+}
+
+ta() {
+  tmux_switch_or_new "${1:-main}"
+}
+
+tl() {
+  _tmux_required || return $?
+  tmux list-sessions "$@"
+}
+
+tn() {
+  _tmux_required || return $?
+  local session="${1:-main}"
+  tmux new-session -s "$session"
+}
+
+tk() {
+  _tmux_required || return $?
+  local session="$1"
+  if [[ -z "$session" ]]; then
+    printf 'Usage: tk <session>\n' >&2
+    return 2
+  fi
+  printf 'Kill tmux session %s? [y/N] ' "$session"
+  local answer
+  read -r answer || return 1
+  [[ "$answer" == [Yy] || "$answer" == [Yy][Ee][Ss] ]] || return 1
+  tmux kill-session -t "$session"
+}
+
+trn() {
+  _tmux_required || return $?
+  if [[ "$#" -ne 2 ]]; then
+    printf 'Usage: trn <old> <new>\n' >&2
+    return 2
+  fi
+  tmux rename-session -t "$1" "$2"
+}
+
+td() {
+  _tmux_required || return $?
+  tmux detach-client
+}
+
+tksv() {
+  _tmux_required || return $?
+  printf 'Kill the entire tmux server and all sessions? [y/N] '
+  local answer
+  read -r answer || return 1
+  [[ "$answer" == [Yy] || "$answer" == [Yy][Ee][Ss] ]] || return 1
+  tmux kill-server
+}
+
+tmain() {
+  tmux_switch_or_new main
+}
+
+tmux_prefix() {
+  _tmux_required || return $?
+  tmux show-option -gqv prefix 2>/dev/null
+}
+
+ta0() {
+  tmux_switch_or_new 0
+}
+
+tls() {
+  tl "$@"
+}
+
+alias tmuxrc='vim ~/.tmux.conf'
+alias tmuxrc_local='vim ~/.tmux.conf.local'
+
+tmuxrc_apply() {
+  _tmux_required || return $?
+  tmux source-file ~/.tmux.conf
+}
 
 alias dc='docker compose'
 alias dcrs='docker compose down && docker compose build && docker compose up'

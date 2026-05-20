@@ -49,10 +49,15 @@ Dry run:
 ./setup.sh ubuntu --yes --admin-user-current
 ./setup.sh ubuntu --yes --admin-user ozz
 ./setup.sh ubuntu --yes --no-admin-user
+sudo ./Ubuntu/setup-ubuntu.sh --create-admin-user --admin-user ozz
 ./setup.sh ubuntu --yes --apt-packages git,zsh,vim,tmux
 ./setup.sh ubuntu --yes --optional-packages bat,eza,btop
 ./setup.sh ubuntu --yes --no-optional-packages
 ./setup.sh ubuntu --yes --proxmox-guest-agent
+./setup.sh ubuntu --yes --tmux-prefix ctrl-a
+./setup.sh ubuntu --yes --tmux-prefix ctrl-b
+./setup.sh ubuntu --yes --save-setup-preferences
+./setup.sh ubuntu --yes --load-setup-preferences
 ```
 
 Tool choices:
@@ -104,8 +109,43 @@ By default, the installer makes sure the login user that runs setup is in the
 If the user does not exist, the installer creates a normal home directory and
 adds the user to `sudo`. It does not set a password or copy private keys.
 
-If Docker is installed, the same user is also added to the `docker` group. Log
-out and back in before expecting the new group membership to work.
+If Docker is installed, the same user is also added to the `docker` group. That
+group can control the host through Docker, so treat it as a privileged group.
+Log out and back in before expecting the new group membership to work.
+
+For a fresh VM where the first login is `root`, use `--create-admin-user` as a
+separate first-boot step:
+
+```sh
+sudo ./Ubuntu/setup-ubuntu.sh --create-admin-user --admin-user john --save-setup-preferences
+su - john
+./setup.sh ubuntu --yes --load-setup-preferences
+```
+
+This root-only path prompts for the new password with hidden terminal input,
+confirms it, creates the user with `/bin/bash`, grants sudo access through the
+admin group, prints the `su - john` continuation, and exits before apt, shell,
+dotfile, or tool setup. Passwords are never accepted as command-line arguments,
+stored in `~/.config/dotfiles/setup.env`, printed in dry-runs, or written to
+logs.
+
+Dry-run mode does not prompt or mutate users. It reports that root is required,
+which username would be used if known, that the password would be prompted
+interactively, and that the setup stops after admin creation.
+
+## Saved setup preferences
+
+Use `--save-setup-preferences` to write reusable non-secret values to:
+
+```text
+~/.config/dotfiles/setup.env
+```
+
+The directory is created with `0700` permissions and the file with `0600`.
+Saved values are allowlisted: target version, selected admin username, tmux
+prefix, and the Proxmox guest-agent choice. Passwords, password hashes, repo
+refs, and generated command text are not saved. Use `--load-setup-preferences`
+to load the file before applying command-line flags; explicit flags still win.
 
 ## Apt packages
 
@@ -223,6 +263,7 @@ Local files:
 
 - `~/.zshrc.local.pre`: loaded before prompt setup.
 - `~/.zshrc.local`: loaded at the end of `.zshrc`.
+- `~/.tmux.conf.local`: loaded at the end of `.tmux.conf` for local overrides.
 - `~/.gitconfig.local`: local Git identity.
 
 ## Git identity
@@ -263,10 +304,16 @@ default oh-my-zsh prompt. The installer records that choice in `~/.zshrc.local`.
 
 Useful aliases:
 
-- `ta 0`: attach to tmux session `0`
-- `ta0`: attach to tmux session `0`
-- `tls`: list tmux sessions
-- `tn name`: create a named tmux session
+- `ta [name]`: attach, switch, or create a tmux session.
+- `ta0`: attach, switch, or create tmux session `0`.
+- `tmain`: attach, switch, or create tmux session `main`.
+- `tl` or `tls`: list tmux sessions.
+- `tn name`: create a named tmux session.
+- `tk name`: confirm, then kill a named tmux session.
+- `trn old new`: rename a tmux session.
+- `td`: detach the current tmux client.
+- `tksv`: confirm, then kill the tmux server.
+- `tmux_prefix`: print the active tmux prefix.
 - `ipb`: short IP address output
 - `ports`: listening TCP ports
 
@@ -281,7 +328,9 @@ The setup script installs `vim-plug`. `.vimrc` only uses it when it exists.
 
 ## tmux
 
-Prefix is `C-a`.
+Prefix defaults to `C-a`. Use `--tmux-prefix ctrl-a` or `--tmux-prefix ctrl-b`
+to write an explicit managed prefix block to `~/.tmux.conf.local`. The main
+`common/.tmux.conf` remains linked, then sources that local override if present.
 
 TPM is not loaded by default. Use `--with-tpm` if you want it installed, then
 enable the TPM block in `common/.tmux.conf`.

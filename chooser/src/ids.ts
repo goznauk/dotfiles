@@ -59,6 +59,13 @@ export const NODE_PACKAGE_MANAGER_IDS = {
 
 export type NodePackageManagerId = (typeof NODE_PACKAGE_MANAGER_IDS)[keyof typeof NODE_PACKAGE_MANAGER_IDS];
 
+export const TMUX_PREFIX_IDS = {
+  CTRL_A: "ctrl-a",
+  CTRL_B: "ctrl-b"
+} as const;
+
+export type TmuxPrefixId = (typeof TMUX_PREFIX_IDS)[keyof typeof TMUX_PREFIX_IDS];
+
 export const PYTHON_STRATEGY_IDS = {
   SYSTEM_UV: "system-uv",
   MISE: "mise",

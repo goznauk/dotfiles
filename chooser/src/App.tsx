@@ -32,6 +32,7 @@ import {
   OS_IDS,
   PYTHON_STRATEGY_IDS,
   THEME_MODES,
+  TMUX_PREFIX_IDS,
   VIEW_IDS,
   type AgentToolId,
   type ConfigKey,
@@ -43,6 +44,7 @@ import {
   type NodeStrategyId,
   type OsId,
   type PythonStrategyId,
+  type TmuxPrefixId,
   type ThemeMode,
   type ViewId
 } from "./ids";
@@ -213,12 +215,16 @@ export const App = () => {
   const [javaStrategy, setJavaStrategy] = useState<JavaStrategyId>(JAVA_STRATEGY_IDS.MISE_TEMURIN_21);
   const [javaEnabled, setJavaEnabled] = useState(false);
   const [adminUserEnabled, setAdminUserEnabled] = useState(true);
+  const [createAdminUser, setCreateAdminUser] = useState(false);
   const [adminUserName, setAdminUserName] = useState("");
   const [installTpm, setInstallTpm] = useState(false);
+  const [tmuxPrefix, setTmuxPrefix] = useState<TmuxPrefixId>(TMUX_PREFIX_IDS.CTRL_A);
   const [powerlevel10k, setPowerlevel10k] = useState(true);
   const [prepareSystem, setPrepareSystem] = useState(true);
   const [runInTmux, setRunInTmux] = useState(true);
   const [assumeYes, setAssumeYes] = useState(true);
+  const [saveSetupPreferences, setSaveSetupPreferences] = useState(true);
+  const [loadSetupPreferences, setLoadSetupPreferences] = useState(false);
   const [repoRef, setRepoRef] = useState(DEFAULT_REF);
   const [copied, setCopied] = useState<string | null>(null);
   const [copyAnnouncementCount, setCopyAnnouncementCount] = useState(0);
@@ -290,6 +296,10 @@ export const App = () => {
         targetVersion: activeTargetVersion,
         selectedPackageNames,
         proxmoxGuestAgent,
+        createAdminUser,
+        tmuxPrefix,
+        saveSetupPreferences,
+        loadSetupPreferences,
         stepSelection,
         assumeYes,
         installTpm,
@@ -316,11 +326,13 @@ export const App = () => {
       adminUserEnabled,
       adminUserName,
       assumeYes,
+      createAdminUser,
       dockerEnabled,
       dockerStrategy,
       installTpm,
       javaEnabled,
       javaStrategy,
+      loadSetupPreferences,
       nodeEnabled,
       nodePackageManager,
       nodeStrategy,
@@ -334,7 +346,9 @@ export const App = () => {
       selectedAgentToolIds,
       selectedDeveloperToolIds,
       selectedPackageNames,
-      stepSelection
+      saveSetupPreferences,
+      stepSelection,
+      tmuxPrefix
     ]
   );
   const configContents = useMemo(
@@ -572,6 +586,8 @@ export const App = () => {
           <UserSettingsPanel
             adminUserEnabled={adminUserEnabled}
             adminUserName={adminUserName}
+            createAdminUser={createAdminUser}
+            onCreateAdminUserChange={setCreateAdminUser}
             onEnabledChange={setAdminUserEnabled}
             onNameChange={setAdminUserName}
           />
@@ -772,8 +788,10 @@ export const App = () => {
                 activeConfig={activeConfig}
                 installTpm={installTpm}
                 powerlevel10k={powerlevel10k}
+                tmuxPrefix={tmuxPrefix}
                 setInstallTpm={setInstallTpm}
                 setPowerlevel10k={setPowerlevel10k}
+                setTmuxPrefix={setTmuxPrefix}
               />
               <ConfigBlockEditor
                 activeBlockId={activeConfigBlockIds[activeConfig]}
@@ -834,6 +852,7 @@ export const App = () => {
               adminUserEnabled={adminUserEnabled}
               adminUserName={adminUserName}
               configContents={configContents}
+              createAdminUser={createAdminUser}
               dockerEnabled={dockerEnabled}
               dockerStrategy={dockerStrategy}
               installTpm={installTpm}
@@ -853,6 +872,7 @@ export const App = () => {
               selectedDeveloperTools={selectedDeveloperTools}
               stepSelection={stepSelection}
               targetVersion={activeTargetVersion}
+              tmuxPrefix={tmuxPrefix}
             />
           </div>
           <CommandPanel
@@ -862,6 +882,7 @@ export const App = () => {
             assumeYes={assumeYes}
             commandSet={commandSet}
             copied={copied}
+            createAdminUser={createAdminUser}
             dockerEnabled={dockerEnabled}
             javaEnabled={javaEnabled}
             javaStrategy={javaStrategy}
@@ -874,14 +895,19 @@ export const App = () => {
             pythonStrategy={pythonStrategy}
             repoRef={repoRef}
             runInTmux={runInTmux}
+            loadSetupPreferences={loadSetupPreferences}
+            saveSetupPreferences={saveSetupPreferences}
             selectedAgentTools={nodeEnabled ? selectedAgentTools : []}
             selectedDeveloperTools={selectedDeveloperTools}
             selectedPackageNames={selectedPackageNames}
             targetVersion={activeTargetVersion}
+            tmuxPrefix={tmuxPrefix}
             setAssumeYes={setAssumeYes}
+            setLoadSetupPreferences={setLoadSetupPreferences}
             setPrepareSystem={setPrepareSystem}
             setRepoRef={setRepoRef}
             setRunInTmux={setRunInTmux}
+            setSaveSetupPreferences={setSaveSetupPreferences}
             onCopy={copyText}
           />
         </section>
@@ -1100,11 +1126,15 @@ const ThemeToggle = ({ mode, onChange }: { mode: ThemeMode; onChange: (mode: The
 const UserSettingsPanel = ({
   adminUserEnabled,
   adminUserName,
+  createAdminUser,
+  onCreateAdminUserChange,
   onEnabledChange,
   onNameChange
 }: {
   adminUserEnabled: boolean;
   adminUserName: string;
+  createAdminUser: boolean;
+  onCreateAdminUserChange: (value: boolean) => void;
   onEnabledChange: (value: boolean) => void;
   onNameChange: (value: string) => void;
 }) => {
@@ -1123,12 +1153,26 @@ const UserSettingsPanel = ({
           onChange={(event) => onNameChange(event.target.value)}
           placeholder="current user"
           disabled={!adminUserEnabled}
+          pattern="[a-z][a-z0-9_-]{0,31}"
           spellCheck={false}
+          title="Lowercase letters, numbers, underscores, or hyphens; must start with a letter."
         />
       </label>
       <p className="muted compact-note user-settings-note">
-        The installer adds this user to sudo. If Docker is installed, it also adds the same user to docker.
+        The installer adds this user to sudo. If Docker is installed, it also adds the same user to docker, which grants
+        broad host control.
       </p>
+      <label className="option-row root-setup-option">
+        <input
+          type="checkbox"
+          checked={createAdminUser}
+          onChange={(event) => onCreateAdminUserChange(event.target.checked)}
+        />
+        <span>
+          <strong>Create admin user first</strong>
+          <small>For root first boot. Password is prompted interactively and is never saved.</small>
+        </span>
+      </label>
     </section>
   );
 };
@@ -1137,14 +1181,18 @@ const ConfigPreferencePanel = ({
   activeConfig,
   installTpm,
   powerlevel10k,
+  tmuxPrefix,
   setInstallTpm,
-  setPowerlevel10k
+  setPowerlevel10k,
+  setTmuxPrefix
 }: {
   activeConfig: ConfigKey;
   installTpm: boolean;
   powerlevel10k: boolean;
+  tmuxPrefix: TmuxPrefixId;
   setInstallTpm: (checked: boolean) => void;
   setPowerlevel10k: (checked: boolean) => void;
+  setTmuxPrefix: (prefix: TmuxPrefixId) => void;
 }) => {
   if (activeConfig !== CONFIG_KEYS.ZSHRC && activeConfig !== CONFIG_KEYS.TMUX) {
     return null;
@@ -1161,12 +1209,24 @@ const ConfigPreferencePanel = ({
         />
       )}
       {activeConfig === CONFIG_KEYS.TMUX && (
-        <PreferenceToggle
-          checked={installTpm}
-          description="Install tmux plugin manager for the TPM block in .tmux.conf."
-          label="Install TPM"
-          onChange={setInstallTpm}
-        />
+        <>
+          <PreferenceToggle
+            checked={installTpm}
+            description="Install tmux plugin manager for the TPM block in .tmux.conf."
+            label="Install TPM"
+            onChange={setInstallTpm}
+          />
+          <div className="preference-card">
+            <div>
+              <strong>Tmux prefix</strong>
+              <small>Writes a local override in ~/.tmux.conf.local.</small>
+            </div>
+            <select value={tmuxPrefix} onChange={(event) => setTmuxPrefix(event.target.value as TmuxPrefixId)}>
+              <option value={TMUX_PREFIX_IDS.CTRL_A}>Ctrl-a</option>
+              <option value={TMUX_PREFIX_IDS.CTRL_B}>Ctrl-b</option>
+            </select>
+          </div>
+        </>
       )}
     </div>
   );
@@ -1726,6 +1786,7 @@ const CommandPanel = ({
   assumeYes,
   commandSet,
   copied,
+  createAdminUser,
   dockerEnabled,
   javaEnabled,
   javaStrategy,
@@ -1738,14 +1799,19 @@ const CommandPanel = ({
   pythonStrategy,
   repoRef,
   runInTmux,
+  loadSetupPreferences,
+  saveSetupPreferences,
   selectedAgentTools,
   selectedDeveloperTools,
   selectedPackageNames,
   targetVersion,
+  tmuxPrefix,
   setAssumeYes,
+  setLoadSetupPreferences,
   setPrepareSystem,
   setRepoRef,
   setRunInTmux,
+  setSaveSetupPreferences,
   onCopy
 }: {
   activeTarget: OsTarget;
@@ -1754,6 +1820,7 @@ const CommandPanel = ({
   assumeYes: boolean;
   commandSet: CommandSet;
   copied: string | null;
+  createAdminUser: boolean;
   dockerEnabled: boolean;
   javaEnabled: boolean;
   javaStrategy: JavaStrategyId;
@@ -1766,19 +1833,32 @@ const CommandPanel = ({
   pythonStrategy: PythonStrategyId;
   repoRef: string;
   runInTmux: boolean;
+  loadSetupPreferences: boolean;
+  saveSetupPreferences: boolean;
   selectedAgentTools: AgentTool[];
   selectedDeveloperTools: DeveloperTool[];
   selectedPackageNames: string[];
   targetVersion: string;
+  tmuxPrefix: TmuxPrefixId;
   setAssumeYes: (value: boolean) => void;
+  setLoadSetupPreferences: (value: boolean) => void;
   setPrepareSystem: (value: boolean) => void;
   setRepoRef: (value: string) => void;
   setRunInTmux: (value: boolean) => void;
+  setSaveSetupPreferences: (value: boolean) => void;
   onCopy: (key: string, value: string) => void;
 }) => {
   const commandDetails = [
     { label: "Target version", value: targetVersion || "not set" },
-    { label: "Admin user", value: adminUserEnabled ? adminUserName.trim() || "current user" : "off" },
+    {
+      label: "Admin user",
+      value: createAdminUser
+        ? `${adminUserName.trim() || "prompted"} (create first)`
+        : adminUserEnabled
+          ? adminUserName.trim() || "current user"
+          : "off"
+    },
+    { label: "Tmux prefix", value: tmuxPrefix === TMUX_PREFIX_IDS.CTRL_A ? "Ctrl-a" : "Ctrl-b" },
     { label: "Docker", value: dockerEnabled ? "on" : "off" },
     { label: "Node", value: nodeEnabled ? nodeStrategy : "off" },
     { label: "Node packages", value: nodeEnabled ? nodePackageManager : "off" },
@@ -1793,7 +1873,8 @@ const CommandPanel = ({
     },
     { label: "Python", value: pythonEnabled ? pythonStrategy : "off" },
     { label: "Java", value: javaEnabled ? javaStrategy : "off" },
-    { label: "Proxmox guest agent", value: proxmoxGuestAgent ? "enable" : "off" }
+    { label: "Proxmox guest agent", value: proxmoxGuestAgent ? "enable" : "off" },
+    { label: "Saved preferences", value: saveSetupPreferences ? "save non-secret values" : "off" }
   ];
 
   return (
@@ -1809,6 +1890,27 @@ const CommandPanel = ({
         <input type="checkbox" checked={assumeYes} onChange={() => setAssumeYes(!assumeYes)} />
         <span>Use --yes</span>
       </label>
+      <label className="switch-row">
+        <input
+          type="checkbox"
+          checked={loadSetupPreferences}
+          onChange={() => setLoadSetupPreferences(!loadSetupPreferences)}
+        />
+        <span>Load saved settings</span>
+      </label>
+      <label className="switch-row">
+        <input
+          type="checkbox"
+          checked={saveSetupPreferences}
+          onChange={() => setSaveSetupPreferences(!saveSetupPreferences)}
+        />
+        <span>Save non-secret settings</span>
+      </label>
+      {createAdminUser && (
+        <p className="muted compact-note">
+          Root setup stops after creating the sudo user. The password is prompted interactively and is not stored.
+        </p>
+      )}
       <div className="command-run-options">
         <label>
           <input type="checkbox" checked={prepareSystem} onChange={() => setPrepareSystem(!prepareSystem)} />
@@ -1859,6 +1961,7 @@ const SummaryView = ({
   adminUserEnabled,
   adminUserName,
   configContents,
+  createAdminUser,
   dockerEnabled,
   dockerStrategy,
   installTpm,
@@ -1877,12 +1980,14 @@ const SummaryView = ({
   selectedDeveloperTools,
   selectedPackageNames,
   stepSelection,
-  targetVersion
+  targetVersion,
+  tmuxPrefix
 }: {
   activeTarget: OsTarget;
   adminUserEnabled: boolean;
   adminUserName: string;
   configContents: Record<ConfigKey, string>;
+  createAdminUser: boolean;
   dockerEnabled: boolean;
   dockerStrategy: DockerStrategyId;
   installTpm: boolean;
@@ -1902,6 +2007,7 @@ const SummaryView = ({
   selectedPackageNames: string[];
   stepSelection: Record<InstallStepKey, boolean>;
   targetVersion: string;
+  tmuxPrefix: TmuxPrefixId;
 }) => {
   const configLineCounts = (Object.keys(configContents) as ConfigKey[]).map((key) => ({
     key,
@@ -1925,7 +2031,13 @@ const SummaryView = ({
           </div>
           <div>
             <dt>Admin user</dt>
-            <dd>{adminUserEnabled ? adminUserName.trim() || "current user" : "off"}</dd>
+            <dd>
+              {createAdminUser
+                ? `${adminUserName.trim() || "prompted"} (create first)`
+                : adminUserEnabled
+                  ? adminUserName.trim() || "current user"
+                  : "off"}
+            </dd>
           </div>
           <div>
             <dt>Install steps</dt>
@@ -1977,6 +2089,10 @@ const SummaryView = ({
           <div>
             <dt>TPM</dt>
             <dd>{installTpm ? "install" : "off"}</dd>
+          </div>
+          <div>
+            <dt>Tmux prefix</dt>
+            <dd>{tmuxPrefix === TMUX_PREFIX_IDS.CTRL_A ? "Ctrl-a" : "Ctrl-b"}</dd>
           </div>
           <div>
             <dt>Proxmox guest agent</dt>

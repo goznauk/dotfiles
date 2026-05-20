@@ -44,6 +44,15 @@ For Proxmox/QEMU VMs, opt into the guest agent:
 ./setup.sh ubuntu --yes --proxmox-guest-agent
 ```
 
+For a first root login on a fresh VM, create the normal sudo user first:
+
+```sh
+sudo ./Ubuntu/setup-ubuntu.sh --create-admin-user --admin-user john --save-setup-preferences
+su - john
+```
+
+The password is prompted interactively and is not stored.
+
 See [Ubuntu setup](./Ubuntu/README.md) for user setup, package lists, runtime
 tools, Node package manager choices, Git identity, Vim, tmux, Docker, and OS
 notes.

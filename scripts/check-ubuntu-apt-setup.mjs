@@ -15,6 +15,8 @@ const proxmoxPackageIndex = setupScript.indexOf('"qemu-guest-agent"');
 const proxmoxEnableFunctionIndex = setupScript.indexOf("enable_qemu_guest_agent()");
 const installFunctionMatch = setupScript.match(/install_apt_packages\(\) \{[\s\S]*?\n\}/);
 const resolveFunctionMatch = setupScript.match(/resolve_apt_packages\(\) \{[\s\S]*?\n\}/);
+const preferenceFunctionMatch = setupScript.match(/save_setup_preferences\(\) \{[\s\S]*?\n\}/);
+const tmuxFunctionMatch = setupScript.match(/write_tmux_prefix_override\(\) \{[\s\S]*?\n\}/);
 
 const assert = (condition, message) => {
   if (!condition) {
@@ -56,6 +58,33 @@ assert(packageInstallIndex >= 0, "install_apt_packages must install resolved apt
 assert(
   proxmoxEnableCallIndex > packageInstallIndex,
   "qemu-guest-agent service enablement must run after apt package install."
+);
+
+assert(setupScript.includes("--create-admin-user"), "Ubuntu installer must expose --create-admin-user.");
+assert(
+  setupScript.includes("prompt_admin_user_password"),
+  "Ubuntu installer must prompt interactively for first-boot admin passwords."
+);
+assert(setupScript.includes("read -rs"), "Admin password prompts must use hidden input.");
+assert(setupScript.includes("chpasswd"), "Admin password setup must use stdin, not command arguments.");
+assert(!setupScript.includes("--admin-password"), "Ubuntu installer must not accept passwords as CLI arguments.");
+assert(setupScript.includes("--tmux-prefix"), "Ubuntu installer must expose --tmux-prefix.");
+assert(setupScript.includes("ctrl-a|ctrl-b"), "Ubuntu installer must only accept ctrl-a or ctrl-b tmux prefixes.");
+assert(tmuxFunctionMatch, "Ubuntu installer must define write_tmux_prefix_override.");
+assert(
+  tmuxFunctionMatch[0].includes(".tmux.conf.local"),
+  "Tmux prefix overrides must be written to ~/.tmux.conf.local."
+);
+assert(setupScript.includes("--save-setup-preferences"), "Ubuntu installer must expose --save-setup-preferences.");
+assert(setupScript.includes("--load-setup-preferences"), "Ubuntu installer must expose --load-setup-preferences.");
+assert(preferenceFunctionMatch, "Ubuntu installer must define save_setup_preferences.");
+assert(
+  preferenceFunctionMatch[0].includes("chmod 600"),
+  "Saved setup preferences must be written with 0600 permissions."
+);
+assert(
+  !preferenceFunctionMatch[0].toLowerCase().includes("password"),
+  "Saved setup preferences must not write password values."
 );
 
 console.log("Ubuntu apt setup check passed.");

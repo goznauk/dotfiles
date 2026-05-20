@@ -42,6 +42,10 @@ const baseInput: BuildCommandInput = {
   targetVersion: "26.04",
   selectedPackageNames: ["git", "zsh"],
   proxmoxGuestAgent: false,
+  createAdminUser: false,
+  tmuxPrefix: "ctrl-a",
+  saveSetupPreferences: true,
+  loadSetupPreferences: false,
   stepSelection: {
     packages: true,
     shell: true,
@@ -106,6 +110,12 @@ assertIncludes(plainCommands.local, "./setup.sh 'ubuntu'", "local command uses s
 assertIncludes(plainCommands.primary, "'--target-version' '26.04'", "primary command includes target version");
 assertIncludes(plainCommands.primary, "'--admin-user-current'", "primary command configures current admin user");
 assertIncludes(plainCommands.primary, "'--apt-packages' 'git,zsh'", "primary command includes selected packages");
+assertIncludes(plainCommands.primary, "'--tmux-prefix' 'ctrl-a'", "primary command includes tmux prefix preference");
+assertIncludes(
+  plainCommands.primary,
+  "'--save-setup-preferences'",
+  "primary command persists non-secret setup preferences"
+);
 assertIncludes(
   plainCommands.primary,
   "'--node-package-manager' 'pnpm'",
@@ -142,6 +152,28 @@ assertNotIncludes(
   "'--admin-user-current'",
   "custom admin user replaces current-user flag"
 );
+
+const firstBootAdminCommands = buildCommands({
+  ...baseInput,
+  prepareSystem: false,
+  runInTmux: false,
+  createAdminUser: true,
+  adminUserName: "john",
+  tmuxPrefix: "ctrl-b",
+  loadSetupPreferences: true
+});
+assertIncludes(
+  firstBootAdminCommands.primary,
+  "'--create-admin-user' '--admin-user' 'john'",
+  "first-boot command creates the named admin user"
+);
+assertIncludes(firstBootAdminCommands.primary, "'--tmux-prefix' 'ctrl-b'", "tmux prefix can be changed to Ctrl-b");
+assertIncludes(
+  firstBootAdminCommands.primary,
+  "'--load-setup-preferences'",
+  "saved setup preferences can be loaded explicitly"
+);
+assertNotIncludes(firstBootAdminCommands.primary, "password", "generated command never includes a password field");
 
 const noPowerlevelCommands = buildCommands({
   ...baseInput,

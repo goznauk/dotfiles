@@ -8,6 +8,7 @@ import {
   NODE_PACKAGE_MANAGER_IDS,
   OS_IDS,
   PYTHON_STRATEGY_IDS,
+  TMUX_PREFIX_IDS,
   type AgentToolId,
   type CommandOsId,
   type DeveloperToolId,
@@ -16,7 +17,8 @@ import {
   type JavaStrategyId,
   type NodePackageManagerId,
   type NodeStrategyId,
-  type PythonStrategyId
+  type PythonStrategyId,
+  type TmuxPrefixId
 } from "./ids.js";
 
 export const REPO_OWNER = "goznauk";
@@ -84,6 +86,10 @@ export type BuildCommandInput = {
   targetVersion: string;
   selectedPackageNames: string[];
   proxmoxGuestAgent: boolean;
+  createAdminUser: boolean;
+  tmuxPrefix: TmuxPrefixId;
+  saveSetupPreferences: boolean;
+  loadSetupPreferences: boolean;
   stepSelection: Record<InstallStepKey, boolean>;
   assumeYes: boolean;
   installTpm: boolean;
@@ -125,11 +131,25 @@ export const buildCommands = (input: BuildCommandInput): CommandSet => {
     flags.push("--yes");
   }
 
+  if (input.loadSetupPreferences) {
+    flags.push("--load-setup-preferences");
+  }
+
+  if (input.saveSetupPreferences) {
+    flags.push("--save-setup-preferences");
+  }
+
   if (input.targetVersion.trim()) {
     flags.push("--target-version", input.targetVersion.trim());
   }
 
-  if (input.adminUserEnabled) {
+  if (input.createAdminUser) {
+    flags.push("--create-admin-user");
+    const adminUserName = input.adminUserName.trim();
+    if (adminUserName) {
+      flags.push("--admin-user", adminUserName);
+    }
+  } else if (input.adminUserEnabled) {
     const adminUserName = input.adminUserName.trim();
     if (adminUserName) {
       flags.push("--admin-user", adminUserName);
@@ -184,6 +204,8 @@ export const buildCommands = (input: BuildCommandInput): CommandSet => {
   if (input.installTpm) {
     flags.push("--with-tpm");
   }
+
+  flags.push("--tmux-prefix", input.tmuxPrefix || TMUX_PREFIX_IDS.CTRL_A);
 
   const setupArgs = [input.activeTarget.commandTarget, ...flags].map(shellQuote).join(" ");
   const envPrefix = activeRef === DEFAULT_REF ? "" : `DOTFILES_REPO_REF=${shellQuote(activeRef)} `;

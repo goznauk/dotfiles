@@ -52,6 +52,8 @@ Use this before changing package data or command generation.
 - One scrolling flow: Target, Packages, Toolchains, Config, Run.
 - Version buttons for each OS target.
 - Sudo user setting for the setup command.
+- Root first-boot admin user creation command that prompts for a password outside the chooser.
+- Saved non-secret setup preference flags.
 - Package search and package group expansion.
 - Chromium browser package option for Ubuntu web testing.
 - Proxmox VM guest-agent package option that emits `--proxmox-guest-agent`.
@@ -62,7 +64,7 @@ Use this before changing package data or command generation.
 - Coding agent CLI choices after Node setup.
 - `.zshrc`, `.vimrc`, `.tmux.conf`, `.gitconfig`, and `htoprc` block editing.
 - Powerlevel10k setting next to `.zshrc`.
-- TPM setting next to `.tmux.conf`.
+- TPM and prefix settings next to `.tmux.conf`.
 - Final install command and local command.
 
 ## Data files
