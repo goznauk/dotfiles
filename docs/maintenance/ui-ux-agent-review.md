@@ -395,7 +395,7 @@ Final root check result:
 - `33ba506 fix: polish chooser command and package feedback`
 - `eb959a5 fix: add chooser favicon`
 
-The report update will be committed separately as documentation.
+This report update is included in this branch as documentation.
 
 ## Deferred Items
 
