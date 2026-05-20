@@ -399,10 +399,10 @@ The report update will be committed separately as documentation.
 
 ## Deferred Items
 
-- Roving focus for the config line list. This would reduce tab-stop volume but
-  is a larger interaction pattern change.
-- Larger config editor redesign. The editor remains dense, especially with long
-  shell content, but a structural redesign risks changing established behavior.
+- Config editor focus and density work was deferred from this broad UI pass, then
+  completed in `docs/maintenance/config-editor-ux-review.md`. That follow-up
+  removed the interactive code-line buttons, added a roving tablist for config
+  files, and made the selected block the primary editing surface.
 - Dedicated visual regression tests. The repository does not currently include a
   Playwright setup.
 - Persistent committed screenshots. Screenshots are large temporary QA artifacts
@@ -414,8 +414,10 @@ The report update will be committed separately as documentation.
   copy-status state, clipboard write fails and the new visible failure toast is
   shown. Normal browsers with clipboard permission should show the corresponding
   copied toast.
-- The config editor still has many interactive code line buttons. It is more
-  accessible than baseline, but not a full code-editor accessibility pattern.
+- The broad UI pass originally left the config editor as a remaining risk. The
+  follow-up Config editor pass removed the many interactive code-line buttons
+  and reduced the tab-stop volume, but it still does not provide a full
+  dedicated code-editor accessibility pattern.
 - macOS, Amazon Linux, and RHEL remain preview targets; this pass did not change
   installer support.
 
@@ -423,8 +425,8 @@ The report update will be committed separately as documentation.
 
 - Add a small Playwright or browser-smoke script to the repo if visual QA will
   become routine.
-- Consider a dedicated config editor redesign with roving focus and a clearer
-  source/preview split.
+- Consider keyboard-accessible block reordering or a richer code-editor pattern
+  only if Config editing becomes a primary workflow.
 - Consider a compact command preview mode that summarizes the generated command
   while still allowing full copy.
 - Add an app-level QA route or query parameter for package search and copy

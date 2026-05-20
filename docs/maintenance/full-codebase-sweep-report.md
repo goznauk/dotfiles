@@ -103,11 +103,11 @@ internals are not summarized unless they affect behavior or verification.
 - `chooser/index.html`: Static app shell and metadata. Risk: description says
   Ubuntu even though previews cover multiple OS targets. Improvement: update copy.
 - `chooser/src/vite-env.d.ts`: Raw import typing. Low risk.
-- `chooser/src/main.tsx`: Main React app, state model, config block editor,
-  package catalog UI, command generation, and summary. Risk: it is too large,
-  pure command helpers are not tested independently, clipboard errors are not
-  handled, and catalog data is cast without runtime validation. Improvements:
-  split helpers or add focused validation first, then improve type boundaries.
+- `chooser/src/main.tsx`: At the time of this sweep this file contained the main
+  React app, state model, config block editor, package catalog UI, command
+  generation, and summary. Current branch status: the entry wrapper now lives in
+  `main.tsx`, while the app surface is in `chooser/src/App.tsx` with helpers
+  split into catalog, command builder, config definitions, and ids modules.
 - `chooser/src/styles.css`: Full app styling. Risk: large single stylesheet,
   compact package rows and command previews need responsive checks after UI
   edits. Improvement: keep visual checks on desktop and mobile.
@@ -609,7 +609,8 @@ performed.
 ### Remaining recommended improvements
 
 - Add CI after deciding when this branch should publish automation.
-- Split more chooser helpers out of `main.tsx` if the UI keeps growing.
+- Split more chooser helpers out of `chooser/src/App.tsx` if the UI keeps
+  growing.
 - Add browser-level interaction tests if a stable local browser test path is
   introduced.
 - Rebuild the macOS setup path only if it becomes an active target again.
